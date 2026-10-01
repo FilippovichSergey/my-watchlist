@@ -6,7 +6,7 @@ import { t, type Locale } from "@/lib/i18n";
 import { categoryName, countryName, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
 import { FilterPanel, FilterSheet, SearchBar } from "./Filters";
-import { filtersFrom, type FilterOptions } from "@/lib/filters";
+import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -71,6 +71,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     { value: average, label: t(locale, "stats.avgMy"), desktopOnly: true },
   ];
 
+  // Category, narrowing filters or search: anything that makes the list shorter than the whole
+  const anythingActive = (values.category !== "" && values.category !== "ALL") || hasActiveFilters(values);
+
   const message = unavailable
     ? t(locale, "home.unavailable")
     : entries.length === 0
@@ -100,9 +103,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="desk:hidden">
             <FilterSheet values={values} options={options} count={filtered.length} />
           </div>
-          <Found n={filtered.length} locale={locale} className="hidden desk:inline" />
+          <Found n={filtered.length} locale={locale} showReset={anythingActive} className="hidden desk:flex" />
         </div>
-        <Found n={filtered.length} locale={locale} className="desk:hidden" />
+        <Found n={filtered.length} locale={locale} showReset={anythingActive} className="flex desk:hidden" />
 
         {message ? (
           <p className="my-12 text-center text-sm text-muted">{message}</p>
@@ -118,11 +121,22 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   );
 }
 
-function Found({ n, locale, className }: { n: number; locale: Locale; className: string }) {
+/** "Found: N", with a link back to the whole list whenever a category, filter or search narrows it. */
+function Found({ n, locale, showReset, className }: { n: number; locale: Locale; showReset: boolean; className: string }) {
   return (
-    <span className={`label-caps whitespace-nowrap ${className}`}>
-      {t(locale, "home.found")}: <span className="font-display text-[13px] text-accent">{n}</span>
-    </span>
+    <div className={`items-center justify-between gap-3 ${className}`}>
+      <span className="label-caps whitespace-nowrap">
+        {t(locale, "home.found")}: <span className="font-display text-[13px] text-accent">{n}</span>
+      </span>
+      {showReset && (
+        <Link
+          href="/"
+          className="whitespace-nowrap text-xs font-semibold tracking-[0.1px] text-muted transition-colors duration-150 hover:text-accent"
+        >
+          {t(locale, "home.resetAll")}
+        </Link>
+      )}
+    </div>
   );
 }
 
