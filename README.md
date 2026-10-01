@@ -6,7 +6,7 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 
 ## Stack
 
-- **Backend** (`backend/`) — Spring Boot 3.5 on Java 21, PostgreSQL + Flyway, Spring Security resource server that validates Google ID tokens, TMDB client.
+- **Backend** (`backend/`) — Spring Boot 4.1 on Java 21, PostgreSQL + Flyway, Spring Security resource server that validates Google ID tokens, TMDB client.
 - **Frontend** (`frontend/`) — Next.js 15, Auth.js v5 (Google sign-in), Tailwind CSS.
 - **Data** — TMDB supplies title, poster and rating. The backend looks them up itself; the admin only picks a search result and adds a private note.
 
@@ -20,7 +20,7 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 
 ## Dependencies
 
-Spring Boot is pinned to the last open-source 3.5 release (`3.5.16`, Spring Security 6.5.11); that line no longer receives security fixes, so moving to Spring Boot 4 is the next planned upgrade. Next.js follows the 15.5 patch line. Keep both current — the first review of this project found the previous versions behind vendor advisories.
+Spring Boot 4.1 (Spring Framework 7, Spring Security 7, Hibernate 7, Flyway 12, Jackson 3, Testcontainers 2) on Java 21; Next.js follows the 15.5 patch line. Keep both current — an early review of this project found the previous versions behind vendor advisories.
 
 ## Local development
 
@@ -88,7 +88,9 @@ Errors are RFC 9457 problem details; validation failures add an `errors[]` list 
 
 ## Deployment
 
-**Backend → Railway** from `backend/Dockerfile`, with the PostgreSQL plugin. Deployed with the Railway CLI: link the `backend/` directory itself to the service (`cd backend && railway link -p my-watchlist -e production -s backend`) and upload with `railway up --service backend` — `railway up` sends the *linked* directory, so linking the repo root would upload the whole repo and the Dockerfile would not be found. The variable `RAILWAY_DOCKERFILE_PATH=Dockerfile` pins the Dockerfile builder; `.railwayignore` keeps `.env` and `target/` out of the upload. Variables:
+**Backend → Railway** from `backend/Dockerfile`, with the PostgreSQL plugin. Deployed with the Railway CLI: link the `backend/` directory itself to the service (`cd backend && railway link -p my-watchlist -e production -s backend`) and upload with `railway up --service backend` — `railway up` sends the *linked* directory, so linking the repo root would upload the whole repo and the Dockerfile would not be found. `.railwayignore` keeps `.env` and `target/` out of the upload.
+
+The service itself is described as infrastructure as code in `backend/.railway/railway.ts` (Dockerfile builder, healthcheck on `/api/entries`, restart policy, and the variable *names*). Secrets are never in that file: `preserve()` keeps whatever is set in the dashboard. Preview and apply changes with `railway config plan` / `railway config apply` from `backend/`; the `railway` npm package in the repo root is the SDK those commands need (on Windows, put the directory holding `railway.exe` on `PATH` first, because the SDK calls the CLI to check its version). Variables:
 
 ```
 DATABASE_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}

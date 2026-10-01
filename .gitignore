@@ -25,3 +25,6 @@ Thumbs.db
 
 # local review notes
 review/
+
+# root tooling (Railway IaC SDK)
+/node_modules/

@@ -1,8 +1,8 @@
 package com.watchlist.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 import com.watchlist.config.TmdbProperties;
 import com.watchlist.dto.TmdbTitle;
 import com.watchlist.model.TmdbMediaType;

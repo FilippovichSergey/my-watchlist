@@ -1,0 +1,8 @@
+{
+  "name": "my-watchlist",
+  "private": true,
+  "description": "Root tooling only: the Railway IaC SDK used by .railway/railway.ts. Frontend and backend have their own builds.",
+  "devDependencies": {
+    "railway": "^3.12.0"
+  }
+}
