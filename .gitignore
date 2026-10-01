@@ -18,6 +18,7 @@ frontend/*.tsbuildinfo
 
 # ide / os
 .idea/
+.claude/
 .vscode/
 *.iml
 .DS_Store

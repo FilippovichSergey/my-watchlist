@@ -13,14 +13,18 @@ export function LanguageSwitch({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div role="group" aria-label={t(locale, "nav.language")} className="flex rounded-full border border-gray-300 dark:border-gray-700 text-xs overflow-hidden">
+    <div
+      role="group"
+      aria-label={t(locale, "nav.language")}
+      className="flex overflow-hidden rounded-[20px] border border-white/20 text-[11px] font-bold uppercase tracking-[0.6px]"
+    >
       {LOCALES.map((l) => (
         <button
           key={l}
           onClick={() => choose(l)}
           aria-pressed={l === locale}
-          className={`px-2.5 py-1 uppercase ${
-            l === locale ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900" : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
+          className={`px-[11px] py-[6px] transition-colors duration-150 desk:py-[5px] ${
+            l === locale ? "bg-accent text-white" : "text-white/55 hover:text-white"
           }`}
         >
           {l}

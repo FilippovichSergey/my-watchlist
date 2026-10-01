@@ -1,3 +1,73 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens from the "Running Log" design system: warm paper neutrals and one orange accent. */
+:root {
+  --accent: #e8521b;
+  --accent-ink: #c8410f;
+  --bg: #f0ede8;
+  --card: #ffffff;
+  --subtle: #f5f3ef;
+  --header: #1a1a1a;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #e5e1da;
+  --on-dark: #ffffff;
+  --on-dark-muted: rgba(255, 255, 255, 0.55);
+  --shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+  --shadow-strong: 0 6px 24px rgba(0, 0, 0, 0.12);
+  color-scheme: light;
+}
+
+/* Dark theme: <html class="dark">, set before paint by the inline script in layout.tsx. */
+:root.dark {
+  --bg: #141414;
+  --card: #1e1e1e;
+  --subtle: #252525;
+  --text: #e8e4de;
+  --muted: #999999;
+  --border: #2e2e2e;
+  --shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  --shadow-strong: 0 6px 24px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-page text-ink font-sans antialiased;
+    transition: background-color 0.15s, color 0.15s;
+  }
+  select,
+  input,
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  /* The signature card: white, 18px radius, floating on a soft shadow, no border */
+  .card {
+    @apply bg-card rounded-card shadow-card;
+  }
+  /* Tiny wide uppercase label under or above a number */
+  .label-caps {
+    @apply text-[10px] font-bold uppercase tracking-[0.9px] text-muted;
+  }
+  /* Filter select / text field */
+  .control {
+    @apply w-full rounded-lg border border-line bg-card px-[10px] py-[5px] text-[13px] text-ink outline-none transition-colors duration-150 focus:border-accent;
+  }
+  /* Big display numeral (Oswald) */
+  .numeral {
+    @apply font-display font-semibold leading-none tracking-[-0.5px];
+  }
+}
+
+/* Horizontal tab strip on narrow screens scrolls without a visible scrollbar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

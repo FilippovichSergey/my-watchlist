@@ -32,44 +32,44 @@ export default async function TitlePage({ params }: Props) {
   if (entry.myRating != null) facts.push([t(locale, "detail.myRating"), `★ ${entry.myRating} / 10`]);
 
   return (
-    <article className="flex flex-col gap-6">
-      <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">
+    <article className="card flex flex-col gap-6 p-5 desk:p-8">
+      <Link href="/" className="text-sm text-muted transition-colors duration-150 hover:text-accent">
         {t(locale, "detail.back")}
       </Link>
       <div className="flex flex-col sm:flex-row gap-8">
-        <div className="relative w-full sm:w-64 aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+        <div className="relative w-full sm:w-64 aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-subtle">
           {entry.posterUrl && (
             <Image src={entry.posterUrl} alt={entry.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 256px" priority />
           )}
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <div>
-            <h1 className="text-2xl font-semibold leading-tight">{entry.title}</h1>
+            <h1 className="font-display text-3xl font-semibold leading-tight">{entry.title}</h1>
             {entry.originalTitle && entry.originalTitle !== entry.title && (
-              <p className="text-gray-500 mt-1">
-                <span className="text-xs uppercase tracking-wide mr-2">{t(locale, "detail.originalTitle")}</span>
+              <p className="text-muted mt-1">
+                <span className="label-caps mr-2">{t(locale, "detail.originalTitle")}</span>
                 {entry.originalTitle}
               </p>
             )}
-            <p className="text-sm text-gray-500 mt-1">{categoryName(entry.category, locale)}</p>
+            <p className="text-sm text-muted mt-1">{categoryName(entry.category, locale)}</p>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
             {facts.map(([label, value]) => (
               <div key={label} className="contents">
-                <dt className="text-gray-500">{label}</dt>
+                <dt className="text-muted">{label}</dt>
                 <dd>{value}</dd>
               </div>
             ))}
           </dl>
           {entry.overview && (
             <section>
-              <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t(locale, "detail.overview")}</h2>
+              <h2 className="label-caps mb-1">{t(locale, "detail.overview")}</h2>
               <p className="text-sm leading-relaxed">{entry.overview}</p>
             </section>
           )}
           {entry.review && (
-            <section className="border-l-2 border-blue-600 pl-4">
-              <h2 className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t(locale, "detail.myFeedback")}</h2>
+            <section className="border-l-2 border-accent pl-4">
+              <h2 className="label-caps mb-1">{t(locale, "detail.myFeedback")}</h2>
               <p className="text-sm leading-relaxed whitespace-pre-line">{entry.review}</p>
             </section>
           )}

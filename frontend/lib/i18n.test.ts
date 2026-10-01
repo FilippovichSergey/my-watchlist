@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
 import { categoryName, countryName, genreName } from "./catalog";
-import { EMPTY_FILTERS, queryWith } from "./filters";
+import { EMPTY_FILTERS, activeFilterCount, filtersFrom, hasActiveFilters, queryWith } from "./filters";
 
 describe("i18n", () => {
   it("recognises the supported UI languages only", () => {
@@ -37,5 +37,15 @@ describe("filter URLs", () => {
     expect(queryWith({ ...EMPTY_FILTERS, category: "ANIME", actor: "Song Joong-ki" }, { genre: "18" })).toBe(
       "/?category=ANIME&genre=18&actor=Song+Joong-ki"
     );
+    expect(queryWith({ ...EMPTY_FILTERS, q: "dune" })).toBe("/?q=dune");
+  });
+
+  it("reads filters from a URL-like source and counts only the narrowing ones", () => {
+    const source: Record<string, string> = { category: "ANIME", year: "2024", q: "x" };
+    const values = filtersFrom((key) => source[key] ?? null);
+    expect(values).toEqual({ ...EMPTY_FILTERS, category: "ANIME", year: "2024", q: "x" });
+    expect(activeFilterCount(values)).toBe(1);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, category: "ANIME" })).toBe(false);
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, q: "a" })).toBe(true);
   });
 });

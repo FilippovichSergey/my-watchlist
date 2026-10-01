@@ -12,7 +12,8 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 
 ## What the site shows
 
-- Poster grid with category tabs (movies / anime / serials) and filters by year, country, genre, actor, TMDB rating and the owner's own rating; filters live in the URL, so a filtered view can be shared.
+- The list as cards — poster, title, year · category · countries, and two numerals: the TMDB rating and the owner's own rating. Category tabs sit in the header; the main column has a title search, a strip with totals per category and the owner's average rating, and the card grid. Filters by year, country, genre, actor, TMDB rating and own rating live in a sidebar (a bottom sheet on screens narrower than 900px). Category, filters and search are all URL parameters, so a filtered view can be shared.
+- Light and dark themes: the system preference by default, a header button switches and the browser remembers the choice. The look follows the owner's "Running Log" design system — warm paper background, white cards on a soft shadow, one orange accent, Jost and Oswald self-hosted through `next/font` (no runtime requests to Google).
 - A page per title: original title, year, countries, genres, leading cast, TMDB rating, overview, the owner's rating and feedback. Facts come from TMDB when a title is added; the admin page can re-read them any time — one title with "Refresh from TMDB", or the whole list with "Refresh all", which runs in the background one title at a time inside the TMDB budget (about 30 titles a minute), shows its progress and survives a page reload. That is also how rows imported before these fields existed get filled.
 - Two UI languages, Belarusian (default) and English, switched in the header and remembered in a cookie. TMDB content itself (titles, overviews, actor names) stays in English; country and genre names are localised.
 
