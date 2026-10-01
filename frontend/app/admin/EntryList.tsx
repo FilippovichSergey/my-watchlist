@@ -161,7 +161,7 @@ function EntryRow({
       </div>
       {!editing && (
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <button onClick={startEditing} className={action}>{t("admin.edit")}</button>
+          <button onClick={startEditing} disabled={busy} className={action}>{t("admin.edit")}</button>
           <button onClick={refresh} disabled={busy} className={action}>{busy ? t("admin.refreshing") : t("admin.refresh")}</button>
           <button onClick={() => onDelete(entry.id)} className="text-xs text-red-500 hover:text-red-700">{t("admin.remove")}</button>
         </div>

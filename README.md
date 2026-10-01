@@ -98,6 +98,8 @@ Corrections to seeded data update the existing row in place (`UPDATE ... WHERE m
 | DELETE | `/api/entries/{id}` | admin | 404 if missing |
 | GET | `/api/tmdb/search?q=` | admin | 1–100 characters; shares the 30/min TMDB budget with create, then 429 |
 
+A row has two writers — TMDB refreshes and the owner's edits — and each writes only its own columns in a single statement (`EntryRepository.updateFacts` / `updateOwnerFields`). They can therefore overlap, in two admin tabs or during the minutes a bulk refresh takes, without one undoing the other; `EntryConcurrencyTest` holds both orders against a real PostgreSQL.
+
 Errors are RFC 9457 problem details; validation failures add an `errors[]` list of `{field, message}`.
 
 ## Deployment

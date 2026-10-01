@@ -53,22 +53,32 @@ public class EntryService {
         return toResponse(repository.save(entry));
     }
 
-    /** The owner-editable part only; TMDB facts are untouched. */
+    /** The owner-editable part only: one statement over the owner's columns, TMDB facts are not written. */
     public EntryResponse update(long id, EntryUpdateRequest request) {
-        Entry entry = load(id);
-        entry.setCategory(request.category());
-        entry.setMyRating(request.myRating());
-        entry.setReview(blankToNull(request.review()));
-        entry.setTitleBe(blankToNull(request.titleBe()));
-        entry.setOverviewBe(blankToNull(request.overviewBe()));
-        return toResponse(repository.save(entry));
+        int updated = repository.updateOwnerFields(id, request.category(), request.myRating(),
+                blankToNull(request.review()), blankToNull(request.titleBe()), blankToNull(request.overviewBe()));
+        if (updated == 0) {
+            throw notFound();
+        }
+        return toResponse(load(id));
     }
 
-    /** Re-reads one title's facts from TMDB; {@link RefreshJob} does this for the whole list. */
+    /**
+     * Re-reads one title's facts from TMDB; {@link RefreshJob} does this for the whole list. The lookup can
+     * take a while and nothing is held in the database during it; afterwards only the TMDB columns are
+     * written, so what the owner saved in the meantime stays as saved.
+     */
     public EntryResponse refresh(long id) {
         Entry entry = load(id);
-        applyFacts(entry, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
-        return toResponse(repository.save(entry));
+        Entry facts = new Entry();
+        applyFacts(facts, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
+        int updated = repository.updateFacts(id, facts.getTitle(), facts.getOriginalTitle(), facts.getReleaseYear(),
+                facts.getCountries(), facts.getGenreIds(), facts.getCastNames(), facts.getOverview(),
+                facts.getPosterPath(), facts.getTmdbRating());
+        if (updated == 0) {
+            throw notFound();
+        }
+        return toResponse(load(id));
     }
 
     public void delete(long id) {
@@ -76,8 +86,11 @@ public class EntryService {
     }
 
     private Entry load(long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entry not found"));
+        return repository.findById(id).orElseThrow(EntryService::notFound);
+    }
+
+    private static ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Entry not found");
     }
 
     private static void applyFacts(Entry entry, TmdbDetails facts) {
