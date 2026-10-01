@@ -7,8 +7,6 @@ import com.watchlist.dto.EntryUpdateRequest;
 import com.watchlist.dto.TmdbDetails;
 import com.watchlist.model.Entry;
 import com.watchlist.repository.EntryRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,7 +19,6 @@ import java.util.stream.Collectors;
 @Service
 public class EntryService {
 
-    private static final Logger log = LoggerFactory.getLogger(EntryService.class);
 
     private final EntryRepository repository;
     private final TmdbService tmdb;
@@ -65,26 +62,11 @@ public class EntryService {
         return toResponse(repository.save(entry));
     }
 
-    /** Re-reads the facts from TMDB, e.g. for rows imported before these fields existed. */
+    /** Re-reads one title's facts from TMDB; {@link RefreshJob} does this for the whole list. */
     public EntryResponse refresh(long id) {
         Entry entry = load(id);
         applyFacts(entry, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
         return toResponse(repository.save(entry));
-    }
-
-    /** @return how many entries were refreshed; titles TMDB no longer knows are skipped, not failed */
-    public int refreshAll() {
-        int refreshed = 0;
-        for (Entry entry : repository.findAll()) {
-            try {
-                applyFacts(entry, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
-                repository.save(entry);
-                refreshed++;
-            } catch (ResponseStatusException e) {
-                log.warn("Skipping entry {} ({} {}): {}", entry.getId(), entry.getMediaType(), entry.getTmdbId(), e.getReason());
-            }
-        }
-        return refreshed;
     }
 
     public void delete(long id) {

@@ -4,6 +4,7 @@ import com.watchlist.dto.EntryRequest;
 import com.watchlist.dto.EntryResponse;
 import com.watchlist.dto.EntryUpdateRequest;
 import com.watchlist.service.EntryService;
+import com.watchlist.service.RefreshJob;
 import com.watchlist.service.TmdbRateLimiter;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/entries")
@@ -28,10 +28,12 @@ public class EntryController {
 
     private final EntryService service;
     private final TmdbRateLimiter quota;
+    private final RefreshJob refreshJob;
 
-    public EntryController(EntryService service, TmdbRateLimiter quota) {
+    public EntryController(EntryService service, TmdbRateLimiter quota, RefreshJob refreshJob) {
         this.service = service;
         this.quota = quota;
+        this.refreshJob = refreshJob;
     }
 
     /** Public. */
@@ -66,11 +68,19 @@ public class EntryController {
         return service.refresh(id);
     }
 
-    /** Re-reads every title's facts from TMDB; one budget unit for the whole batch. */
+    /**
+     * Starts re-reading every title's facts from TMDB in the background, each lookup paid from the
+     * caller's budget; answers at once with the progress, which {@link #refreshProgress()} then reports.
+     */
     @PostMapping("/refresh")
-    public Map<String, Integer> refreshAll(@AuthenticationPrincipal Jwt jwt) {
-        quota.acquireOrThrow(jwt.getSubject());
-        return Map.of("refreshed", service.refreshAll());
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public RefreshJob.Progress refreshAll(@AuthenticationPrincipal Jwt jwt) {
+        return refreshJob.start(jwt.getSubject());
+    }
+
+    @GetMapping("/refresh")
+    public RefreshJob.Progress refreshProgress() {
+        return refreshJob.progress();
     }
 
     @DeleteMapping("/{id}")

@@ -37,6 +37,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Declared first: the refresh job lives under the public /api/entries/* pattern
+                        .requestMatchers("/api/entries/refresh").hasRole(ROLE_ADMIN)
                         .requestMatchers(HttpMethod.GET, "/api/entries", "/api/entries/*").permitAll()
                         .anyRequest().hasRole(ROLE_ADMIN))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));

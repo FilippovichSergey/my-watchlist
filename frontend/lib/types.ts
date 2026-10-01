@@ -53,5 +53,15 @@ export interface UpdateEntryInput {
   review: string | null;
 }
 
+/** State of the background "refresh all" job on the backend; there is at most one run at a time. */
+export interface RefreshProgress {
+  running: boolean;
+  total: number;
+  done: number;
+  failed: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
 /** TMDB ids repeat between movies and TV, so keys need the media type too. */
 export const titleKey = (t: { mediaType: TmdbMediaType; id: number }) => `${t.mediaType}-${t.id}`;

@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import type { CreateEntryInput, Entry, TmdbTitle, UpdateEntryInput } from "./types";
+import type { CreateEntryInput, Entry, RefreshProgress, TmdbTitle, UpdateEntryInput } from "./types";
 
 export interface FieldError {
   field: string;
@@ -70,4 +70,7 @@ export const updateEntry = (id: number, input: UpdateEntryInput) =>
 
 export const refreshEntry = (id: number) => adminRequest<Entry>(`/api/entries/${id}/refresh`, { method: "POST" });
 
-export const refreshAllEntries = () => adminRequest<{ refreshed: number }>("/api/entries/refresh", { method: "POST" });
+/** Starts the background refresh of every title (or joins the run already going) and returns its progress. */
+export const startRefreshAll = () => adminRequest<RefreshProgress>("/api/entries/refresh", { method: "POST" });
+
+export const refreshProgress = () => adminRequest<RefreshProgress>("/api/entries/refresh");

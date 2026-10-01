@@ -8,6 +8,7 @@ import com.watchlist.dto.EntryResponse;
 import com.watchlist.model.Category;
 import com.watchlist.model.TmdbMediaType;
 import com.watchlist.service.EntryService;
+import com.watchlist.service.RefreshJob;
 import com.watchlist.service.TmdbRateLimiter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -67,6 +69,7 @@ class EntryControllerTest {
     @Autowired MockMvc mvc;
     @Autowired AdminAuthorityConverter authorities;
     @MockitoBean EntryService service;
+    @MockitoBean RefreshJob refreshJob;
 
     /** A Google ID token as the real converter would see it, with verified e-mail claims. */
     RequestPostProcessor googleUser(String email) {
@@ -149,13 +152,26 @@ class EntryControllerTest {
     void refreshIsAdminOnly() throws Exception {
         mvc.perform(post("/api/entries/1/refresh")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/entries/refresh").with(googleUser(STRANGER))).andExpect(status().isForbidden());
-        // Refreshes draw from the shared TMDB budget too, so they use their own allowlisted admin here
+        // The batch progress is not public even though GET /api/entries/* is
+        mvc.perform(get("/api/entries/refresh")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/entries/refresh").with(googleUser(STRANGER))).andExpect(status().isForbidden());
+        verifyNoInteractions(service, refreshJob);
+
+        // A single refresh draws from the shared TMDB budget, so it uses its own allowlisted admin here
         String refresher = "refresher@example.com";
         given(service.refresh(1L)).willReturn(sample(1L, "Dune: Part Two"));
-        given(service.refreshAll()).willReturn(162);
         mvc.perform(post("/api/entries/1/refresh").with(googleUser(refresher))).andExpect(status().isOk());
-        mvc.perform(post("/api/entries/refresh").with(googleUser(refresher))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.refreshed").value(162));
+
+        Instant startedAt = Instant.parse("2026-10-01T12:00:00Z");
+        given(refreshJob.start("sub-" + refresher)).willReturn(new RefreshJob.Progress(true, 162, 0, 0, startedAt, null));
+        given(refreshJob.progress()).willReturn(new RefreshJob.Progress(false, 162, 160, 2, startedAt, startedAt.plusSeconds(400)));
+        mvc.perform(post("/api/entries/refresh").with(googleUser(refresher))).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.running").value(true))
+                .andExpect(jsonPath("$.total").value(162));
+        mvc.perform(get("/api/entries/refresh").with(googleUser(refresher))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.running").value(false))
+                .andExpect(jsonPath("$.done").value(160))
+                .andExpect(jsonPath("$.failed").value(2));
     }
 
     @Test

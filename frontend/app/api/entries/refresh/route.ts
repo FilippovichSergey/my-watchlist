@@ -4,3 +4,7 @@ import { proxyToBackend } from "@/lib/backend";
 export async function POST(req: NextRequest) {
   return proxyToBackend(req, "/api/entries/refresh", { method: "POST" });
 }
+
+export async function GET(req: NextRequest) {
+  return proxyToBackend(req, "/api/entries/refresh");
+}

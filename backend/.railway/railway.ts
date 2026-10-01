@@ -20,9 +20,12 @@ export default defineRailway(() => {
       DATABASE_USER: "${{Postgres.PGUSER}}",
       DATABASE_PASSWORD: "${{Postgres.PGPASSWORD}}",
       RAILWAY_DOCKERFILE_PATH: "Dockerfile",
-      // Secrets and personal data are set in the dashboard and only preserved here, never committed
+      // Secrets and personal data are set in the dashboard and only preserved here, never committed.
+      // TMDB_ACCESS_TOKEN (v4) is preferred over TMDB_API_KEY; ADMIN_GOOGLE_SUBS over ADMIN_EMAILS.
+      TMDB_ACCESS_TOKEN: preserve(),
       TMDB_API_KEY: preserve(),
       GOOGLE_CLIENT_ID: preserve(),
+      ADMIN_GOOGLE_SUBS: preserve(),
       ADMIN_EMAILS: preserve(),
     },
   });

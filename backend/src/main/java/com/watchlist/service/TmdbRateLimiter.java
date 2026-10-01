@@ -39,6 +39,13 @@ public class TmdbRateLimiter {
         }
     }
 
+    /** For background work that must not fail on a full budget: sleeps until one more call is allowed. */
+    public void awaitSlot(String key) throws InterruptedException {
+        while (!tryAcquire(key)) {
+            Thread.sleep(Duration.ofSeconds(2));
+        }
+    }
+
     public boolean tryAcquire(String key) {
         Deque<Instant> window = hits.computeIfAbsent(key, k -> new ArrayDeque<>());
         synchronized (window) {

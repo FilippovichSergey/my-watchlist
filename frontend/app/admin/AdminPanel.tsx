@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useT } from "../providers";
-import { ApiError, deleteEntry, fetchAdminEntries, refreshAllEntries, refreshEntry, updateEntry } from "@/lib/api";
-import type { Entry, UpdateEntryInput } from "@/lib/types";
+import { ApiError, deleteEntry, fetchAdminEntries, refreshEntry, refreshProgress, startRefreshAll, updateEntry } from "@/lib/api";
+import type { Entry, RefreshProgress, UpdateEntryInput } from "@/lib/types";
 import { AddEntryForm } from "./AddEntryForm";
 import { EntryList } from "./EntryList";
 
@@ -17,9 +17,11 @@ export function AdminPanel({
 }) {
   const t = useT();
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [progress, setProgress] = useState<RefreshProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const polling = useRef(false);
+  const refreshing = progress?.running ?? false;
 
   const handleError = useCallback(
     (err: unknown) => {
@@ -37,9 +39,41 @@ export function AdminPanel({
     [onSessionExpired, t]
   );
 
+  /** Follows a background "refresh all" run until it ends, then reloads the list and reports the counts. */
+  const followRefresh = useCallback(
+    async (initial: RefreshProgress) => {
+      if (polling.current) return;
+      polling.current = true;
+      try {
+        let current = initial;
+        setProgress(current);
+        while (current.running) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          current = await refreshProgress();
+          setProgress(current);
+        }
+        setEntries(await fetchAdminEntries());
+        const summary = t("admin.refreshed", { n: current.done });
+        setNotice(current.failed > 0 ? `${summary} · ${t("admin.refreshFailed", { n: current.failed })}` : summary);
+      } catch (err) {
+        handleError(err);
+      } finally {
+        polling.current = false;
+        setProgress(null);
+      }
+    },
+    [handleError, t]
+  );
+
   useEffect(() => {
     fetchAdminEntries().then(setEntries).catch(handleError);
-  }, [handleError]);
+    // A run started before a page reload is still going on the backend; pick it up again
+    refreshProgress()
+      .then((p) => {
+        if (p.running) void followRefresh(p);
+      })
+      .catch(handleError);
+  }, [handleError, followRefresh]);
 
   const replace = (updated: Entry) => setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
 
@@ -64,17 +98,12 @@ export function AdminPanel({
   }
 
   async function handleRefreshAll() {
-    setRefreshing(true);
     setError(null);
     setNotice(null);
     try {
-      const { refreshed } = await refreshAllEntries();
-      setEntries(await fetchAdminEntries());
-      setNotice(t("admin.refreshed", { n: refreshed }));
+      await followRefresh(await startRefreshAll());
     } catch (err) {
       handleError(err);
-    } finally {
-      setRefreshing(false);
     }
   }
 
@@ -111,6 +140,11 @@ export function AdminPanel({
       {notice && (
         <p role="status" className="text-sm text-green-700 border border-green-200 dark:border-green-900 rounded-lg px-3 py-2">
           {notice}
+        </p>
+      )}
+      {progress?.running && (
+        <p role="status" className="text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2">
+          {t("admin.refreshProgress", { done: progress.done, total: progress.total })}
         </p>
       )}
 

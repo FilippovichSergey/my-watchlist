@@ -8,12 +8,12 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 
 - **Backend** (`backend/`) — Spring Boot 4.1 on Java 21, PostgreSQL + Flyway, Spring Security resource server that validates Google ID tokens, TMDB client.
 - **Frontend** (`frontend/`) — Next.js 15, Auth.js v5 (Google sign-in), Tailwind CSS.
-- **Data** — TMDB supplies title, poster and rating. The backend looks them up itself; the admin only picks a search result and adds a private note.
+- **Data** — TMDB supplies title, poster, rating and the facts shown on a title page. The backend looks them up itself; the admin only picks a search result and adds the category, an optional 1–10 rating and feedback. All of that is public — there is no private field.
 
 ## What the site shows
 
 - Poster grid with category tabs (movies / anime / serials) and filters by year, country, genre, actor, TMDB rating and the owner's own rating; filters live in the URL, so a filtered view can be shared.
-- A page per title: original title, year, countries, genres, leading cast, TMDB rating, overview, the owner's rating and feedback. Facts come from TMDB when a title is added; the admin page can re-read them any time ("Refresh from TMDB"), which is also how rows imported before these fields existed get filled.
+- A page per title: original title, year, countries, genres, leading cast, TMDB rating, overview, the owner's rating and feedback. Facts come from TMDB when a title is added; the admin page can re-read them any time — one title with "Refresh from TMDB", or the whole list with "Refresh all", which runs in the background one title at a time inside the TMDB budget (about 30 titles a minute), shows its progress and survives a page reload. That is also how rows imported before these fields existed get filled.
 - Two UI languages, Belarusian (default) and English, switched in the header and remembered in a cookie. TMDB content itself (titles, overviews, actor names) stays in English; country and genre names are localised.
 
 ## How access works
@@ -77,6 +77,8 @@ npm run dev
 
 Schema changes go into new `V2__...`, `V3__...` files; a migration that has run anywhere is never edited — not even its comments, because Flyway's checksum covers the whole file. `AppliedMigrationsUnchangedTest` pins the checksums of applied migrations and fails the build on any change.
 
+Corrections to seeded data update the existing row in place (`UPDATE ... WHERE media_type = ... AND tmdb_id = ...`), so the row keeps its `id`, its position in the list and whatever the owner has added to it — category, rating, feedback. Replacing a row is a last resort and must then copy those fields and the `id` explicitly. `V4` predates this rule and replaced its row; before it ran anywhere the owner fields of that row were empty (checked on 2026-10-01 against production), and like any applied migration it stays as it is.
+
 ## Seed data
 
 `V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list, and `V4__fix_my_youth.sql` corrects one match in place (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
@@ -90,7 +92,8 @@ Schema changes go into new `V2__...`, `V3__...` files; a migration that has run 
 | POST | `/api/entries` | admin | `{tmdbId, mediaType: MOVIE or TV, category: MOVIE / ANIME / SERIAL, myRating?, review?}` — 409 if already listed, 422 if TMDB has no such title |
 | PATCH | `/api/entries/{id}` | admin | `{category, myRating?, review?}` — the owner-editable part |
 | POST | `/api/entries/{id}/refresh` | admin | re-reads the title's facts from TMDB |
-| POST | `/api/entries/refresh` | admin | re-reads every title; answers `{refreshed: n}` |
+| POST | `/api/entries/refresh` | admin | starts a background re-read of every title, each lookup paid from the caller's TMDB budget (waits when it is spent); 202 with `{running, total, done, failed, startedAt, finishedAt}`. One run at a time — a second call joins the current one |
+| GET | `/api/entries/refresh` | admin | progress of the current or last run |
 | DELETE | `/api/entries/{id}` | admin | 404 if missing |
 | GET | `/api/tmdb/search?q=` | admin | 1–100 characters; shares the 30/min TMDB budget with create, then 429 |
 
