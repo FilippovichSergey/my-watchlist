@@ -1,28 +1,44 @@
 spring:
+  config:
+    # Local development: load backend/.env (gitignored) as properties. Real environment
+    # variables always take precedence, and the file simply does not exist in containers.
+    import: optional:file:./.env[.properties]
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/watchlist}
-    username: ${DATABASE_USER:watchlist}
-    password: ${DATABASE_PASSWORD:watchlist}
+    # No fallbacks on purpose: a deployment without credentials must fail to start.
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
   flyway:
     enabled: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://accounts.google.com
-          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
-
-tmdb:
-  api-key: ${TMDB_API_KEY}
-  base-url: https://api.themoviedb.org/3
-  image-base-url: https://image.tmdb.org/t/p/w500
+  http:
+    client:
+      connect-timeout: 5s
+      read-timeout: 10s
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+auth:
+  google:
+    issuer: https://accounts.google.com
+    jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+    # Only ID tokens minted for this OAuth client are accepted (aud claim).
+    client-id: ${GOOGLE_CLIENT_ID}
+  # Google account ids (the stable "sub" claim) allowed to modify the list. Preferred.
+  admin-google-subs: ${ADMIN_GOOGLE_SUBS:}
+  # Verified e-mails allowed to modify the list. Handy for the first sign-in; one of the two lists must be set.
+  admin-emails: ${ADMIN_EMAILS:}
+
+tmdb:
+  # Preferred: v4 "API Read Access Token", sent as an Authorization header.
+  access-token: ${TMDB_ACCESS_TOKEN:}
+  # Legacy v3 key, used only when no access token is set (travels in the URL).
+  api-key: ${TMDB_API_KEY:}
+  base-url: https://api.themoviedb.org/3
+  image-base-url: https://image.tmdb.org/t/p/w500
+  # Per-admin budget shared by searches and the lookup done on every create. Counted in this JVM only.
+  rate-limit-per-minute: 30

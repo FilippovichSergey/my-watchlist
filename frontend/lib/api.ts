@@ -1,61 +1,62 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { getSession } from "next-auth/react";
+import type { CreateEntryInput, Entry, TmdbTitle } from "./types";
 
-export type Category = "MOVIE" | "ANIME" | "SERIAL";
-
-export interface Entry {
-  id: number;
-  tmdbId: number;
-  title: string;
-  category: Category;
-  posterUrl: string | null;
-  tmdbRating: number | null;
-  review: string | null;
-  createdAt: string;
+export interface FieldError {
+  field: string;
+  message: string;
 }
 
-export interface TmdbResult {
-  id: number;
-  title: string;
-  posterPath: string | null;
-  voteAverage: number | null;
-  overview: string;
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly fieldErrors: FieldError[] = []
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
 }
 
-export async function fetchEntries(): Promise<Entry[]> {
-  const res = await fetch(`${API_BASE}/api/entries`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch entries");
-  return res.json();
+/**
+ * Calls the same-origin admin routes. On 401 the Auth.js session is refreshed
+ * (which renews the Google token server-side) and the call is retried once.
+ */
+async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  let res = await fetch(path, { ...init, cache: "no-store" });
+  if (res.status === 401) {
+    await getSession();
+    res = await fetch(path, { ...init, cache: "no-store" });
+  }
+  if (!res.ok) throw await toApiError(res);
+  return res.status === 204 ? (undefined as T) : res.json();
 }
 
-export async function searchTmdb(q: string, idToken: string): Promise<TmdbResult[]> {
-  const res = await fetch(
-    `${API_BASE}/api/tmdb/search?q=${encodeURIComponent(q)}`,
-    { headers: { Authorization: `Bearer ${idToken}` } }
-  );
-  if (!res.ok) throw new Error("TMDB search failed");
-  return res.json();
+async function toApiError(res: Response): Promise<ApiError> {
+  let body: { detail?: string; errors?: FieldError[] } | null = null;
+  try {
+    body = await res.json();
+  } catch {
+    // not a JSON problem response
+  }
+  const message =
+    res.status === 401
+      ? "Your session has expired. Please sign in again."
+      : res.status === 403
+        ? "This account is not allowed to modify the list."
+        : body?.detail ?? `Request failed (${res.status})`;
+  return new ApiError(res.status, message, body?.errors ?? []);
 }
 
-export async function createEntry(
-  body: Omit<Entry, "id" | "createdAt">,
-  idToken: string
-): Promise<Entry> {
-  const res = await fetch(`${API_BASE}/api/entries`, {
+export const fetchAdminEntries = () => adminRequest<Entry[]>("/api/entries");
+
+export const searchTmdb = (q: string) =>
+  adminRequest<TmdbTitle[]>(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
+
+export const createEntry = (input: CreateEntryInput) =>
+  adminRequest<Entry>("/api/entries", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error("Failed to create entry");
-  return res.json();
-}
 
-export async function deleteEntry(id: number, idToken: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/entries/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${idToken}` },
-  });
-  if (!res.ok) throw new Error("Failed to delete entry");
-}
+export const deleteEntry = (id: number) => adminRequest<void>(`/api/entries/${id}`, { method: "DELETE" });

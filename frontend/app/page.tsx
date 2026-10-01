@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { fetchEntries, type Category, type Entry } from "@/lib/api";
+import { fetchPublicEntries } from "@/lib/backend";
+import type { Category, Entry } from "@/lib/types";
 
 const CATEGORIES: { label: string; value: Category | "ALL" }[] = [
   { label: "All", value: "ALL" },
@@ -14,7 +15,15 @@ export default async function HomePage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const entries = await fetchEntries();
+
+  let entries: Entry[] = [];
+  let unavailable = false;
+  try {
+    entries = await fetchPublicEntries();
+  } catch {
+    unavailable = true;
+  }
+
   const filtered =
     !category || category === "ALL"
       ? entries
@@ -38,7 +47,9 @@ export default async function HomePage({
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {unavailable ? (
+        <p className="text-gray-500 text-center mt-20">The list is temporarily unavailable.</p>
+      ) : filtered.length === 0 ? (
         <p className="text-gray-500 text-center mt-20">Nothing here yet.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -76,9 +87,7 @@ function EntryCard({ entry }: { entry: Entry }) {
       </div>
       <div>
         <p className="text-sm font-medium leading-tight line-clamp-2">{entry.title}</p>
-        <p className="text-xs text-gray-500 capitalize mt-0.5">
-          {entry.category.toLowerCase()}
-        </p>
+        <p className="text-xs text-gray-500 capitalize mt-0.5">{entry.category.toLowerCase()}</p>
       </div>
     </div>
   );

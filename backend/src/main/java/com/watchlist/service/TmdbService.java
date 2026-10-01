@@ -1,60 +1,103 @@
 package com.watchlist.service;
 
-import com.watchlist.dto.TmdbSearchResult;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.watchlist.config.TmdbProperties;
+import com.watchlist.dto.TmdbTitle;
+import com.watchlist.model.TmdbMediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
-import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class TmdbService {
 
-    private final RestClient restClient;
+    private static final int MAX_RESULTS = 10;
 
-    @Value("${tmdb.api-key}")
-    private String apiKey;
+    private final RestClient tmdb;
+    private final String imageBaseUrl;
 
-    @Value("${tmdb.image-base-url}")
-    private String imageBaseUrl;
+    public TmdbService(RestClient tmdbRestClient, TmdbProperties props) {
+        this.tmdb = tmdbRestClient;
+        this.imageBaseUrl = props.imageBaseUrl();
+    }
 
-    @SuppressWarnings("unchecked")
-    public List<TmdbSearchResult> search(String query) {
-        Map<String, Object> response = restClient.get()
-                .uri("/search/multi?query={q}&api_key={key}&language=en-US&page=1", query, apiKey)
-                .retrieve()
-                .body(Map.class);
-
-        if (response == null || !response.containsKey("results")) return List.of();
-
-        List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
-        return results.stream()
-                .filter(r -> "movie".equals(r.get("media_type")) || "tv".equals(r.get("media_type")))
-                .limit(10)
-                .map(this::toResult)
+    public List<TmdbTitle> search(String query) {
+        SearchResponse response;
+        try {
+            response = tmdb.get()
+                    .uri("/search/multi?query={q}&include_adult=false&language=en-US&page=1", query)
+                    .retrieve()
+                    .body(SearchResponse.class);
+        } catch (RestClientException e) {
+            throw upstreamFailure(e);
+        }
+        if (response == null || response.results() == null) {
+            return List.of();
+        }
+        return response.results().stream()
+                .filter(r -> TmdbMediaType.fromTmdbName(r.mediaType()).isPresent())
+                .limit(MAX_RESULTS)
+                .map(r -> toTitle(TmdbMediaType.fromTmdbName(r.mediaType()).orElseThrow(),
+                        r.id(), r.title(), r.name(), r.posterPath(), r.voteAverage(), r.overview()))
                 .toList();
     }
 
-    @SuppressWarnings("unchecked")
-    private TmdbSearchResult toResult(Map<String, Object> r) {
-        String mediaType = (String) r.get("media_type");
-        String title = "movie".equals(mediaType)
-                ? (String) r.get("title")
-                : (String) r.get("name");
-        String posterPath = (String) r.get("poster_path");
-        String posterUrl = posterPath != null ? imageBaseUrl + posterPath : null;
-        Number vote = (Number) r.get("vote_average");
-        BigDecimal rating = vote != null ? BigDecimal.valueOf(vote.doubleValue()) : null;
-        return new TmdbSearchResult(
-                (Integer) r.get("id"),
-                title,
-                posterUrl,
-                rating,
-                (String) r.get("overview")
-        );
+    /** Authoritative metadata for one title. Stored entries are built from this, never from client-supplied fields. */
+    public TmdbTitle details(TmdbMediaType type, int tmdbId) {
+        Details details;
+        try {
+            details = tmdb.get()
+                    .uri("/{type}/{id}?language=en-US", type.tmdbName(), tmdbId)
+                    .retrieve()
+                    .body(Details.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "TMDB has no " + type.tmdbName() + " with id " + tmdbId);
+        } catch (RestClientException e) {
+            throw upstreamFailure(e);
+        }
+        if (details == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TMDB returned an empty response");
+        }
+        return toTitle(type, details.id(), details.title(), details.name(),
+                details.posterPath(), details.voteAverage(), details.overview());
     }
+
+    private static ResponseStatusException upstreamFailure(RestClientException cause) {
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "TMDB request failed", cause);
+    }
+
+    private TmdbTitle toTitle(TmdbMediaType type, int id, String title, String name,
+                              String posterPath, BigDecimal voteAverage, String overview) {
+        // Movies carry "title", TV shows carry "name"
+        String displayTitle = title != null ? title : name != null ? name : "Untitled";
+        String posterUrl = posterPath != null ? imageBaseUrl + posterPath : null;
+        // TMDB reports 0 for titles nobody has rated yet
+        BigDecimal rating = voteAverage == null || voteAverage.signum() == 0
+                ? null
+                : voteAverage.setScale(1, RoundingMode.HALF_UP);
+        return new TmdbTitle(id, type, displayTitle, posterPath, posterUrl, rating, overview);
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SearchResponse(List<SearchItem> results) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record SearchItem(int id, String mediaType, String title, String name,
+                             String posterPath, BigDecimal voteAverage, String overview) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record Details(int id, String title, String name,
+                          String posterPath, BigDecimal voteAverage, String overview) {}
 }
