@@ -1,17 +1,13 @@
 package com.watchlist.dto;
 
 import com.watchlist.model.Category;
-import com.watchlist.model.TmdbMediaType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-/** What the admin chooses. Title, poster, rating and facts are looked up on TMDB server-side, not trusted from the client. */
-public record EntryRequest(
-        @NotNull @Positive Integer tmdbId,
-        @NotNull TmdbMediaType mediaType,
+/** The owner-editable part of an entry; TMDB facts are refreshed separately. */
+public record EntryUpdateRequest(
         @NotNull Category category,
         @Min(1) @Max(10) Integer myRating,
         @Size(max = 2000) String review) {}

@@ -1,7 +1,6 @@
 import Image from "next/image";
-import { titleKey, type TmdbMediaType, type TmdbTitle } from "@/lib/types";
-
-const MEDIA_LABEL: Record<TmdbMediaType, string> = { MOVIE: "Movie", TV: "TV series" };
+import { useT } from "../providers";
+import { titleKey, type TmdbTitle } from "@/lib/types";
 
 export function SearchResults({
   results,
@@ -12,6 +11,7 @@ export function SearchResults({
   selectedKey: string | null;
   onSelect: (result: TmdbTitle) => void;
 }) {
+  const t = useT();
   if (results.length === 0) return null;
   return (
     <ul className="divide-y divide-gray-100 dark:divide-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
@@ -26,18 +26,16 @@ export function SearchResults({
             }`}
           >
             {r.posterUrl && (
-              <Image
-                src={r.posterUrl}
-                alt={r.title}
-                width={40}
-                height={60}
-                className="rounded object-cover flex-shrink-0"
-              />
+              <Image src={r.posterUrl} alt={r.title} width={40} height={60} className="rounded object-cover flex-shrink-0" />
             )}
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{r.title}</p>
+              <p className="text-sm font-medium truncate">
+                {r.title}
+                {r.year && <span className="text-gray-500 font-normal"> ({r.year})</span>}
+              </p>
               <p className="text-xs text-gray-500">
-                {MEDIA_LABEL[r.mediaType]}
+                {r.mediaType === "MOVIE" ? t("admin.movie") : t("admin.tvSeries")}
+                {r.originalTitle && r.originalTitle !== r.title && ` · ${r.originalTitle}`}
                 {r.voteAverage != null && ` · TMDB ${r.voteAverage.toFixed(1)}`}
               </p>
               {r.overview && <p className="text-xs text-gray-500 line-clamp-2">{r.overview}</p>}

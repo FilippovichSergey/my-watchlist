@@ -1,5 +1,5 @@
 import { getSession } from "next-auth/react";
-import type { CreateEntryInput, Entry, TmdbTitle } from "./types";
+import type { CreateEntryInput, Entry, TmdbTitle, UpdateEntryInput } from "./types";
 
 export interface FieldError {
   field: string;
@@ -60,3 +60,14 @@ export const createEntry = (input: CreateEntryInput) =>
   });
 
 export const deleteEntry = (id: number) => adminRequest<void>(`/api/entries/${id}`, { method: "DELETE" });
+
+export const updateEntry = (id: number, input: UpdateEntryInput) =>
+  adminRequest<Entry>(`/api/entries/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+export const refreshEntry = (id: number) => adminRequest<Entry>(`/api/entries/${id}/refresh`, { method: "POST" });
+
+export const refreshAllEntries = () => adminRequest<{ refreshed: number }>("/api/entries/refresh", { method: "POST" });

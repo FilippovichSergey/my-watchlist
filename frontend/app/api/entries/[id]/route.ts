@@ -8,3 +8,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
   return proxyToBackend(req, `/api/entries/${id}`, { method: "DELETE" });
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ detail: "Invalid id" }, { status: 400 });
+  }
+  return proxyToBackend(req, `/api/entries/${id}`, { method: "PATCH", forwardBody: true });
+}

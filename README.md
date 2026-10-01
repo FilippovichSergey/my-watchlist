@@ -10,9 +10,15 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 - **Frontend** (`frontend/`) — Next.js 15, Auth.js v5 (Google sign-in), Tailwind CSS.
 - **Data** — TMDB supplies title, poster and rating. The backend looks them up itself; the admin only picks a search result and adds a private note.
 
+## What the site shows
+
+- Poster grid with category tabs (movies / anime / serials) and filters by year, country, genre, actor, TMDB rating and the owner's own rating; filters live in the URL, so a filtered view can be shared.
+- A page per title: original title, year, countries, genres, leading cast, TMDB rating, overview, the owner's rating and feedback. Facts come from TMDB when a title is added; the admin page can re-read them any time ("Refresh from TMDB"), which is also how rows imported before these fields existed get filled.
+- Two UI languages, Belarusian (default) and English, switched in the header and remembered in a cookie. TMDB content itself (titles, overviews, actor names) stays in English; country and genre names are localised.
+
 ## How access works
 
-- `GET /api/entries` is public. The `review` field is omitted unless the caller is the admin.
+- `GET /api/entries` and `GET /api/entries/{id}` are public, including the owner's rating and feedback.
 - Everything else needs a Google ID token issued for *this* OAuth client (`aud` is checked) from an allowlisted account: by stable Google account id (`ADMIN_GOOGLE_SUBS`, preferred) or by verified e-mail (`ADMIN_EMAILS`, handy for the first sign-in — the admin page then shows your account id). Other Google accounts get 403.
 - The browser never holds the Google token. The admin page calls Next.js route handlers (`/api/entries`, `/api/tmdb/search`), which read the token from the encrypted Auth.js cookie, forward it to the backend and renew it with the refresh token shortly before the ID token's own `exp`.
 - The cookie-authenticated routes accept only `fetch()` calls from the app's own pages (Fetch Metadata must say `Sec-Fetch-Site: same-origin` and `Sec-Fetch-Dest: empty`; requests without these headers are refused too), so a cross-site navigation cannot spend the TMDB budget even on GET. Writes additionally need an exact `Origin` match — scheme, host and port, against `APP_ORIGIN` when set, otherwise the request's own origin (proxy headers trusted only on Vercel or with `AUTH_TRUST_HOST=true`) — plus `application/json` and at most 16 KiB of body. All of it is checked in that order after the session, so anonymous callers cannot make the server buffer large bodies.
@@ -79,8 +85,12 @@ Schema changes go into new `V2__...`, `V3__...` files; a migration that has run 
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/entries` | public | `review` only for the admin |
-| POST | `/api/entries` | admin | `{tmdbId, mediaType: MOVIE or TV, category: MOVIE / ANIME / SERIAL, review?}` — 409 if already listed, 422 if TMDB has no such title |
+| GET | `/api/entries` | public | all titles with facts, owner rating and feedback |
+| GET | `/api/entries/{id}` | public | one title; 404 if missing |
+| POST | `/api/entries` | admin | `{tmdbId, mediaType: MOVIE or TV, category: MOVIE / ANIME / SERIAL, myRating?, review?}` — 409 if already listed, 422 if TMDB has no such title |
+| PATCH | `/api/entries/{id}` | admin | `{category, myRating?, review?}` — the owner-editable part |
+| POST | `/api/entries/{id}/refresh` | admin | re-reads the title's facts from TMDB |
+| POST | `/api/entries/refresh` | admin | re-reads every title; answers `{refreshed: n}` |
 | DELETE | `/api/entries/{id}` | admin | 404 if missing |
 | GET | `/api/tmdb/search?q=` | admin | 1–100 characters; shares the 30/min TMDB budget with create, then 429 |
 

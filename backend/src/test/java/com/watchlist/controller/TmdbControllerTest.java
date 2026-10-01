@@ -69,7 +69,7 @@ class TmdbControllerTest {
 
     @Test
     void searchByAdminReturnsTrimmedQueryResults() throws Exception {
-        given(service.search("dune")).willReturn(List.of(new TmdbTitle(693134, TmdbMediaType.MOVIE, "Dune: Part Two",
+        given(service.search("dune")).willReturn(List.of(new TmdbTitle(693134, TmdbMediaType.MOVIE, "Dune: Part Two", "Dune: Part Two", 2024,
                 "/abc.jpg", "https://image.tmdb.org/t/p/w500/abc.jpg", new BigDecimal("8.2"), "Paul")));
         mvc.perform(get("/api/tmdb/search").param("q", " dune ").with(googleUser(ADMIN)))
                 .andExpect(status().isOk())

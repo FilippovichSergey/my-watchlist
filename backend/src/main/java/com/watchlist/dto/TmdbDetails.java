@@ -3,15 +3,18 @@ package com.watchlist.dto;
 import com.watchlist.model.TmdbMediaType;
 
 import java.math.BigDecimal;
+import java.util.List;
 
-/** A movie or TV show as a TMDB search result. */
-public record TmdbTitle(
+/** Everything the list stores about a title, as TMDB describes it. */
+public record TmdbDetails(
         int id,
         TmdbMediaType mediaType,
         String title,
         String originalTitle,
         Integer year,
+        List<String> countries,
+        List<Integer> genreIds,
+        List<String> cast,
         String posterPath,
-        String posterUrl,
         BigDecimal voteAverage,
         String overview) {}

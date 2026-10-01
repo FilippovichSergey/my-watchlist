@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -11,6 +12,14 @@ import type { Entry } from "./types";
 
 // Server-only: the browser never talks to the Spring backend directly.
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8080";
+
+/** One public entry for its page; null when it does not exist. Cached per request so metadata and page share it. */
+export const fetchPublicEntry = cache(async (id: number): Promise<Entry | null> => {
+  const res = await fetch(`${BACKEND_URL}/api/entries/${id}`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Backend responded ${res.status}`);
+  return res.json();
+});
 
 /** Public list for the home page (rendered on the server, no credentials). */
 export async function fetchPublicEntries(): Promise<Entry[]> {
@@ -27,7 +36,7 @@ export async function fetchPublicEntries(): Promise<Entry[]> {
 export async function proxyToBackend(
   req: NextRequest,
   path: string,
-  init: { method: "GET" | "POST" | "DELETE"; forwardBody?: boolean } = { method: "GET" }
+  init: { method: "GET" | "POST" | "PATCH" | "DELETE"; forwardBody?: boolean } = { method: "GET" }
 ): Promise<NextResponse> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("AUTH_SECRET is not set");

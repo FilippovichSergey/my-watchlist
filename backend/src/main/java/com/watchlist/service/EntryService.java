@@ -3,18 +3,25 @@ package com.watchlist.service;
 import com.watchlist.config.TmdbProperties;
 import com.watchlist.dto.EntryRequest;
 import com.watchlist.dto.EntryResponse;
-import com.watchlist.dto.TmdbTitle;
+import com.watchlist.dto.EntryUpdateRequest;
+import com.watchlist.dto.TmdbDetails;
 import com.watchlist.model.Entry;
 import com.watchlist.repository.EntryRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class EntryService {
+
+    private static final Logger log = LoggerFactory.getLogger(EntryService.class);
 
     private final EntryRepository repository;
     private final TmdbService tmdb;
@@ -26,41 +33,106 @@ public class EntryService {
         this.imageBaseUrl = props.imageBaseUrl();
     }
 
-    /** @param includeReview personal notes are only for the admin; the public list gets null */
-    public List<EntryResponse> findAll(boolean includeReview) {
-        return repository.findAllByOrderByCreatedAtDesc().stream()
-                .map(e -> toResponse(e, includeReview))
-                .toList();
+    public List<EntryResponse> findAll() {
+        return repository.findAllByOrderByCreatedAtDesc().stream().map(this::toResponse).toList();
     }
 
-    /** Title, poster and rating come from TMDB itself, so the client cannot store made-up metadata. */
+    public EntryResponse findOne(long id) {
+        return toResponse(load(id));
+    }
+
+    /** Title, poster, rating and facts come from TMDB itself, so the client cannot store made-up metadata. */
     public EntryResponse create(EntryRequest request) {
         if (repository.existsByMediaTypeAndTmdbId(request.mediaType(), request.tmdbId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This title is already in the list");
         }
-        TmdbTitle tmdbTitle = tmdb.details(request.mediaType(), request.tmdbId());
-
         Entry entry = new Entry();
         entry.setTmdbId(request.tmdbId());
         entry.setMediaType(request.mediaType());
         entry.setCategory(request.category());
-        entry.setTitle(tmdbTitle.title());
-        entry.setPosterPath(tmdbTitle.posterPath());
-        entry.setTmdbRating(tmdbTitle.voteAverage());
-        entry.setReview(StringUtils.hasText(request.review()) ? request.review().trim() : null);
-        return toResponse(repository.save(entry), true);
+        entry.setMyRating(request.myRating());
+        entry.setReview(blankToNull(request.review()));
+        applyFacts(entry, tmdb.details(request.mediaType(), request.tmdbId()));
+        return toResponse(repository.save(entry));
+    }
+
+    /** The owner-editable part only; TMDB facts are untouched. */
+    public EntryResponse update(long id, EntryUpdateRequest request) {
+        Entry entry = load(id);
+        entry.setCategory(request.category());
+        entry.setMyRating(request.myRating());
+        entry.setReview(blankToNull(request.review()));
+        return toResponse(repository.save(entry));
+    }
+
+    /** Re-reads the facts from TMDB, e.g. for rows imported before these fields existed. */
+    public EntryResponse refresh(long id) {
+        Entry entry = load(id);
+        applyFacts(entry, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
+        return toResponse(repository.save(entry));
+    }
+
+    /** @return how many entries were refreshed; titles TMDB no longer knows are skipped, not failed */
+    public int refreshAll() {
+        int refreshed = 0;
+        for (Entry entry : repository.findAll()) {
+            try {
+                applyFacts(entry, tmdb.details(entry.getMediaType(), entry.getTmdbId()));
+                repository.save(entry);
+                refreshed++;
+            } catch (ResponseStatusException e) {
+                log.warn("Skipping entry {} ({} {}): {}", entry.getId(), entry.getMediaType(), entry.getTmdbId(), e.getReason());
+            }
+        }
+        return refreshed;
     }
 
     public void delete(long id) {
-        if (!repository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Entry not found");
-        }
-        repository.deleteById(id);
+        repository.deleteById(load(id).getId());
     }
 
-    private EntryResponse toResponse(Entry e, boolean includeReview) {
+    private Entry load(long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entry not found"));
+    }
+
+    private static void applyFacts(Entry entry, TmdbDetails facts) {
+        entry.setTitle(facts.title());
+        entry.setOriginalTitle(facts.originalTitle());
+        entry.setReleaseYear(facts.year());
+        entry.setCountries(join(facts.countries(), 64));
+        entry.setGenreIds(join(facts.genreIds().stream().map(String::valueOf).toList(), 128));
+        entry.setCastNames(join(facts.cast(), 512));
+        entry.setOverview(facts.overview());
+        entry.setPosterPath(facts.posterPath());
+        entry.setTmdbRating(facts.voteAverage());
+    }
+
+    /** Comma-separated, cut at the column size on a comma boundary. */
+    private static String join(List<String> values, int maxLength) {
+        if (values == null || values.isEmpty()) return null;
+        String joined = String.join(",", values);
+        while (joined.length() > maxLength && joined.contains(",")) {
+            joined = joined.substring(0, joined.lastIndexOf(','));
+        }
+        return joined.length() > maxLength ? null : joined;
+    }
+
+    private static List<String> split(String csv) {
+        return csv == null || csv.isBlank() ? List.of()
+                : Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+    }
+
+    private static String blankToNull(String s) {
+        return StringUtils.hasText(s) ? s.trim() : null;
+    }
+
+    private EntryResponse toResponse(Entry e) {
         String posterUrl = e.getPosterPath() != null ? imageBaseUrl + e.getPosterPath() : null;
-        return new EntryResponse(e.getId(), e.getTmdbId(), e.getMediaType(), e.getTitle(), e.getCategory(),
-                posterUrl, e.getTmdbRating(), includeReview ? e.getReview() : null, e.getCreatedAt());
+        List<Integer> genreIds = split(e.getGenreIds()).stream()
+                .filter(s -> s.chars().allMatch(Character::isDigit)).map(Integer::valueOf).toList();
+        return new EntryResponse(e.getId(), e.getTmdbId(), e.getMediaType(), e.getTitle(), e.getOriginalTitle(),
+                e.getCategory(), e.getReleaseYear(), split(e.getCountries()), genreIds, split(e.getCastNames()),
+                e.getOverview(), posterUrl, e.getTmdbRating(), e.getMyRating(), e.getReview(), e.getCreatedAt());
     }
 }

@@ -34,12 +34,35 @@ public class Entry {
     @Column(nullable = false)
     private String title;
 
+    private String originalTitle;
+
+    private Integer releaseYear;
+
+    /** Comma-separated ISO 3166-1 codes, e.g. "KR" or "JP,US"; names are localised by the frontend. */
+    @Column(length = 64)
+    private String countries;
+
+    /** Comma-separated TMDB genre ids; names are localised by the frontend. */
+    @Column(length = 128)
+    private String genreIds;
+
+    /** Comma-separated names of the leading cast, as TMDB spells them. */
+    @Column(length = 512)
+    private String castNames;
+
+    @Column(columnDefinition = "TEXT")
+    private String overview;
+
     /** TMDB poster path such as "/abc.jpg"; the image base URL is applied when responding. */
     private String posterPath;
 
     @Column(precision = 3, scale = 1)
     private BigDecimal tmdbRating;
 
+    /** The owner's own score, 1-10. */
+    private Integer myRating;
+
+    /** The owner's short feedback, shown publicly. */
     @Column(length = 2000)
     private String review;
 
