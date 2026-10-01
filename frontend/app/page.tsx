@@ -7,6 +7,7 @@ import { categoryName, countryName, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
 import { FilterPanel, FilterSheet, SearchBar } from "./Filters";
 import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
+import { byMyRatingDesc } from "@/lib/sort";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -49,6 +50,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       (rating === null || (e.tmdbRating ?? 0) >= rating) &&
       (my === null || (e.myRating ?? 0) >= my)
   );
+
+  const shown = [...filtered].sort(byMyRatingDesc);
 
   // Options and statistics describe the whole list; only "found" follows the filters
   const options: FilterOptions = {
@@ -111,7 +114,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <p className="my-12 text-center text-sm text-muted">{message}</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-4">
-            {filtered.map((entry) => (
+            {shown.map((entry) => (
               <EntryCard key={entry.id} entry={entry} locale={locale} />
             ))}
           </div>
