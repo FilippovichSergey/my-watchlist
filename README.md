@@ -88,7 +88,7 @@ Errors are RFC 9457 problem details; validation failures add an `errors[]` list 
 
 ## Deployment
 
-**Backend → Railway** from `backend/Dockerfile`, with the PostgreSQL plugin. Variables:
+**Backend → Railway** from `backend/Dockerfile`, with the PostgreSQL plugin. Deployed with the Railway CLI: link the `backend/` directory itself to the service (`cd backend && railway link -p my-watchlist -e production -s backend`) and upload with `railway up --service backend` — `railway up` sends the *linked* directory, so linking the repo root would upload the whole repo and the Dockerfile would not be found. The variable `RAILWAY_DOCKERFILE_PATH=Dockerfile` pins the Dockerfile builder; `.railwayignore` keeps `.env` and `target/` out of the upload. Variables:
 
 ```
 DATABASE_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
