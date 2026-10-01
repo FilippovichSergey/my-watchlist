@@ -53,8 +53,13 @@ export function AdminPanel({
           setProgress(current);
         }
         setEntries(await fetchAdminEntries());
-        const summary = t("admin.refreshed", { n: current.done });
-        setNotice(current.failed > 0 ? `${summary} · ${t("admin.refreshFailed", { n: current.failed })}` : summary);
+        if (current.error) {
+          // Stopped early: some titles may be fresh, but the run is not a success
+          setError(t("admin.refreshAborted", { done: current.done, total: current.total, reason: current.error }));
+        } else {
+          const summary = t("admin.refreshed", { n: current.done });
+          setNotice(current.failed > 0 ? `${summary} · ${t("admin.refreshFailed", { n: current.failed })}` : summary);
+        }
       } catch (err) {
         handleError(err);
       } finally {

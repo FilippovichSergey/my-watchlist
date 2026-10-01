@@ -13,6 +13,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,17 +96,74 @@ class RefreshJobTest {
     }
 
     @Test
-    void unexpectedFailureEndsTheRunAsFinished() {
+    void completedRunHasNoErrorAndAccountsForEveryId() {
         given(repository.findAllIds()).willReturn(List.of(1L, 2L));
-        given(entries.refresh(1L)).willThrow(new IllegalStateException("database away"));
         RefreshJob job = job(100);
 
         job.start(ADMIN);
         await().until(() -> !job.progress().running());
-        assertThat(job.progress().done()).isZero();
-        assertThat(job.progress().finishedAt()).isNotNull();
+        RefreshJob.Progress p = job.progress();
+        assertThat(p.error()).isNull();
+        assertThat(p.done() + p.failed()).isEqualTo(p.total());
+    }
+
+    @Test
+    void unexpectedFailureIsReportedAsAnAbortedRun() {
+        given(repository.findAllIds()).willReturn(List.of(1L, 2L, 3L));
+        given(entries.refresh(2L)).willThrow(new IllegalStateException("database away"));
+        RefreshJob job = job(100);
+
+        job.start(ADMIN);
+        await().until(() -> !job.progress().running());
+        RefreshJob.Progress p = job.progress();
+        assertThat(p.done()).isEqualTo(1);
+        assertThat(p.failed()).isZero();
+        assertThat(p.error()).isEqualTo("aborted: IllegalStateException");
+        assertThat(p.finishedAt()).isNotNull();
         // A later start is possible again
         assertThat(job.start(ADMIN).running()).isTrue();
         await().until(() -> !job.progress().running());
+    }
+
+    @Test
+    void failedStartReleasesTheLockAndIsReported() {
+        given(repository.findAllIds())
+                .willThrow(new IllegalStateException("database away"))
+                .willReturn(List.of(1L));
+        RefreshJob job = job(100);
+
+        RefreshJob.Progress failed = job.start(ADMIN);
+        assertThat(failed.running()).isFalse();
+        assertThat(failed.error()).isEqualTo("could not start: IllegalStateException");
+        assertThat(failed.finishedAt()).isNotNull();
+
+        RefreshJob.Progress second = job.start(ADMIN);
+        assertThat(second.running()).isTrue();
+        assertThat(second.total()).isEqualTo(1);
+        await().until(() -> !job.progress().running());
+        assertThat(job.progress().error()).isNull();
+    }
+
+    @Test
+    void concurrentStartWhileIdsLoadSeesTheNewRunNotTheOldOne() throws Exception {
+        CountDownLatch loading = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        given(repository.findAllIds()).willAnswer(inv -> {
+            loading.countDown();
+            release.await();
+            return List.of(1L);
+        });
+        RefreshJob job = job(100);
+
+        CompletableFuture<RefreshJob.Progress> first = CompletableFuture.supplyAsync(() -> job.start(ADMIN));
+        loading.await();
+        RefreshJob.Progress meanwhile = job.start("sub-someone-else");
+        assertThat(meanwhile.running()).as("the lock is taken, so the caller must see a run in progress").isTrue();
+        assertThat(meanwhile.error()).isNull();
+
+        release.countDown();
+        assertThat(first.get().running()).isTrue();
+        await().until(() -> !job.progress().running());
+        verify(repository, times(1)).findAllIds();
     }
 }

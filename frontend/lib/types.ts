@@ -61,6 +61,8 @@ export interface RefreshProgress {
   failed: number;
   startedAt: string | null;
   finishedAt: string | null;
+  /** Null for a run that went through every title; the reason when it stopped early or could not start. */
+  error: string | null;
 }
 
 /** TMDB ids repeat between movies and TV, so keys need the media type too. */

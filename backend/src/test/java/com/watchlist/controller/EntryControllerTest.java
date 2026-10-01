@@ -163,15 +163,16 @@ class EntryControllerTest {
         mvc.perform(post("/api/entries/1/refresh").with(googleUser(refresher))).andExpect(status().isOk());
 
         Instant startedAt = Instant.parse("2026-10-01T12:00:00Z");
-        given(refreshJob.start("sub-" + refresher)).willReturn(new RefreshJob.Progress(true, 162, 0, 0, startedAt, null));
-        given(refreshJob.progress()).willReturn(new RefreshJob.Progress(false, 162, 160, 2, startedAt, startedAt.plusSeconds(400)));
+        given(refreshJob.start("sub-" + refresher)).willReturn(new RefreshJob.Progress(true, 162, 0, 0, startedAt, null, null));
+        given(refreshJob.progress()).willReturn(new RefreshJob.Progress(false, 162, 160, 2, startedAt, startedAt.plusSeconds(400), null));
         mvc.perform(post("/api/entries/refresh").with(googleUser(refresher))).andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.running").value(true))
                 .andExpect(jsonPath("$.total").value(162));
         mvc.perform(get("/api/entries/refresh").with(googleUser(refresher))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.running").value(false))
                 .andExpect(jsonPath("$.done").value(160))
-                .andExpect(jsonPath("$.failed").value(2));
+                .andExpect(jsonPath("$.failed").value(2))
+                .andExpect(jsonPath("$.error").value((Object) null));
     }
 
     @Test

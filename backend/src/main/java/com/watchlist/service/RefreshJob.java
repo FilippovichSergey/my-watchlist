@@ -22,9 +22,14 @@ public class RefreshJob {
 
     private static final Logger log = LoggerFactory.getLogger(RefreshJob.class);
 
-    public record Progress(boolean running, int total, int done, int failed, Instant startedAt, Instant finishedAt) {
+    /**
+     * {@code error} is null for a run that went through every id (then {@code done + failed == total});
+     * it names the reason when the run stopped early or could not start.
+     */
+    public record Progress(boolean running, int total, int done, int failed, Instant startedAt, Instant finishedAt,
+                           String error) {
         static Progress idle() {
-            return new Progress(false, 0, 0, 0, null, null);
+            return new Progress(false, 0, 0, 0, null, null, null);
         }
     }
 
@@ -47,10 +52,25 @@ public class RefreshJob {
         if (!running.compareAndSet(false, true)) {
             return progress.get();
         }
-        List<Long> ids = repository.findAllIds();
-        progress.set(new Progress(true, ids.size(), 0, 0, clock.instant(), null));
-        Thread.ofVirtual().name("tmdb-refresh").start(() -> run(ids, budgetKey));
-        return progress.get();
+        Instant startedAt = clock.instant();
+        // Published before the ids are loaded, so a concurrent caller never sees the previous run
+        progress.set(new Progress(true, 0, 0, 0, startedAt, null, null));
+        try {
+            List<Long> ids = repository.findAllIds();
+            Progress started = new Progress(true, ids.size(), 0, 0, startedAt, null, null);
+            progress.set(started);
+            Thread.ofVirtual().name("tmdb-refresh").start(() -> run(ids, budgetKey));
+            // The snapshot rather than the live state: a short run may already be over by now
+            return started;
+        } catch (RuntimeException e) {
+            // The lock must not outlive a failed start, or no run could ever begin again
+            log.error("Refresh run could not start", e);
+            Progress failed = new Progress(false, 0, 0, 0, startedAt, clock.instant(),
+                    "could not start: " + e.getClass().getSimpleName());
+            progress.set(failed);
+            running.set(false);
+            return failed;
+        }
     }
 
     public Progress progress() {
@@ -61,6 +81,8 @@ public class RefreshJob {
         Instant startedAt = progress.get().startedAt();
         int done = 0;
         int failed = 0;
+        // Cleared only after the last id, so any way out of the loop other than the end is reported as such
+        String error = "aborted";
         try {
             for (Long id : ids) {
                 quota.awaitSlot(budgetKey);
@@ -71,14 +93,17 @@ public class RefreshJob {
                     failed++;
                     log.warn("Refresh of entry {} skipped: {}", id, e.getReason());
                 }
-                progress.set(new Progress(true, ids.size(), done, failed, startedAt, null));
+                progress.set(new Progress(true, ids.size(), done, failed, startedAt, null, null));
             }
+            error = null;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            error = "interrupted";
         } catch (RuntimeException e) {
             log.error("Refresh run aborted after {} entries", done, e);
+            error = "aborted: " + e.getClass().getSimpleName();
         } finally {
-            progress.set(new Progress(false, ids.size(), done, failed, startedAt, clock.instant()));
+            progress.set(new Progress(false, ids.size(), done, failed, startedAt, clock.instant(), error));
             running.set(false);
         }
     }

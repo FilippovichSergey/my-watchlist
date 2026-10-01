@@ -82,7 +82,7 @@ Corrections to seeded data update the existing row in place (`UPDATE ... WHERE m
 
 ## Seed data
 
-`V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list, and `V4__fix_my_youth.sql` corrects one match in place (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
+`V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list, and `V4__fix_my_youth.sql` replaces one mismatched row — it deletes the wrong title and inserts the right one at the same position, which is why the correction rule below now asks for an in-place `UPDATE` instead (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
 
 ## API
 
@@ -93,7 +93,7 @@ Corrections to seeded data update the existing row in place (`UPDATE ... WHERE m
 | POST | `/api/entries` | admin | `{tmdbId, mediaType: MOVIE or TV, category: MOVIE / ANIME / SERIAL, myRating?, review?}` — 409 if already listed, 422 if TMDB has no such title |
 | PATCH | `/api/entries/{id}` | admin | `{category, myRating?, review?}` — the owner-editable part |
 | POST | `/api/entries/{id}/refresh` | admin | re-reads the title's facts from TMDB |
-| POST | `/api/entries/refresh` | admin | starts a background re-read of every title, each lookup paid from the caller's TMDB budget (waits when it is spent); 202 with `{running, total, done, failed, startedAt, finishedAt}`. One run at a time — a second call joins the current one |
+| POST | `/api/entries/refresh` | admin | starts a background re-read of every title, each lookup paid from the caller's TMDB budget (waits when it is spent); 202 with `{running, total, done, failed, startedAt, finishedAt, error}`; `error` is null for a run that went through every title (`done + failed == total`) and names the reason when a run stopped early or could not start. One run at a time — a second call joins the current one |
 | GET | `/api/entries/refresh` | admin | progress of the current or last run |
 | DELETE | `/api/entries/{id}` | admin | 404 if missing |
 | GET | `/api/tmdb/search?q=` | admin | 1–100 characters; shares the 30/min TMDB budget with create, then 429 |
