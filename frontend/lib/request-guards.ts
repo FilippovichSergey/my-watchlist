@@ -43,15 +43,16 @@ export function rejectCrossOrigin(req: NextRequest, policy: OriginPolicy = origi
 
 /**
  * Fetch Metadata: our pages call these routes with fetch(), which browsers label
- * Sec-Fetch-Site: same-origin and Sec-Fetch-Dest: empty. A top-level navigation (Sec-Fetch-Dest:
- * document) or a request from another site would still carry the SameSite=Lax cookie on GET, so
- * it is refused. Requests without these headers (old browsers, non-browser clients) fall through
- * to the other checks; without the session cookie they end at 401 anyway.
+ * Sec-Fetch-Site: same-origin and Sec-Fetch-Dest: empty. Anything else is refused: a top-level
+ * navigation (Sec-Fetch-Dest: document), a request from another site, or a client that sends no
+ * Fetch Metadata at all, because a cookie-bearing navigation would otherwise spend the TMDB budget
+ * even on GET. Every browser that can sign in here sends these headers (Chrome 76+, Firefox 90+,
+ * Safari 16.4+); non-browser clients never hold the session cookie in the first place.
  */
 export function rejectNavigationOrCrossSite(req: NextRequest): NextResponse | null {
   const site = req.headers.get("sec-fetch-site");
   const dest = req.headers.get("sec-fetch-dest");
-  if ((site !== null && site !== "same-origin") || (dest !== null && dest !== "empty")) {
+  if (site !== "same-origin" || dest !== "empty") {
     return NextResponse.json({ detail: "Request must come from the application's own pages" }, { status: 403 });
   }
   return null;

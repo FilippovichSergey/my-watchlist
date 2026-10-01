@@ -111,8 +111,9 @@ describe("rejectNavigationOrCrossSite", () => {
     expect(rejectNavigationOrCrossSite(get({ "sec-fetch-site": "same-site", "sec-fetch-dest": "empty" }))?.status).toBe(403);
   });
 
-  it("falls through when the client sends no Fetch Metadata", () => {
-    expect(rejectNavigationOrCrossSite(get({}))).toBeNull();
+  it("refuses a request without Fetch Metadata, which only an outdated browser or a script would send", () => {
+    expect(rejectNavigationOrCrossSite(get({}))?.status).toBe(403);
+    expect(rejectNavigationOrCrossSite(get({ "sec-fetch-site": "same-origin" }))?.status).toBe(403);
   });
 });
 

@@ -15,8 +15,12 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 - `GET /api/entries` is public. The `review` field is omitted unless the caller is the admin.
 - Everything else needs a Google ID token issued for *this* OAuth client (`aud` is checked) from an allowlisted account: by stable Google account id (`ADMIN_GOOGLE_SUBS`, preferred) or by verified e-mail (`ADMIN_EMAILS`, handy for the first sign-in — the admin page then shows your account id). Other Google accounts get 403.
 - The browser never holds the Google token. The admin page calls Next.js route handlers (`/api/entries`, `/api/tmdb/search`), which read the token from the encrypted Auth.js cookie, forward it to the backend and renew it with the refresh token shortly before the ID token's own `exp`.
-- The cookie-authenticated routes accept only `fetch()` calls from the app's own pages (Fetch Metadata: `Sec-Fetch-Site: same-origin`, `Sec-Fetch-Dest: empty`), so a cross-site navigation cannot spend the TMDB budget even on GET. Writes additionally need an exact `Origin` match — scheme, host and port, against `APP_ORIGIN` when set, otherwise the request's own origin (proxy headers trusted only on Vercel or with `AUTH_TRUST_HOST=true`) — plus `application/json` and at most 16 KiB of body. All of it is checked in that order after the session, so anonymous callers cannot make the server buffer large bodies.
+- The cookie-authenticated routes accept only `fetch()` calls from the app's own pages (Fetch Metadata must say `Sec-Fetch-Site: same-origin` and `Sec-Fetch-Dest: empty`; requests without these headers are refused too), so a cross-site navigation cannot spend the TMDB budget even on GET. Writes additionally need an exact `Origin` match — scheme, host and port, against `APP_ORIGIN` when set, otherwise the request's own origin (proxy headers trusted only on Vercel or with `AUTH_TRUST_HOST=true`) — plus `application/json` and at most 16 KiB of body. All of it is checked in that order after the session, so anonymous callers cannot make the server buffer large bodies.
 - TMDB calls are budgeted per admin (30 per minute, shared by searches and the lookup on every create). The counter is in-process: the backend runs as one instance.
+
+## Dependencies
+
+Spring Boot is pinned to the last open-source 3.5 release (`3.5.16`, Spring Security 6.5.11); that line no longer receives security fixes, so moving to Spring Boot 4 is the next planned upgrade. Next.js follows the 15.5 patch line. Keep both current — the first review of this project found the previous versions behind vendor advisories.
 
 ## Local development
 
@@ -69,7 +73,7 @@ Schema changes go into new `V2__...`, `V3__...` files; a migration that has run 
 
 ## Seed data
 
-`V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
+`V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list, and `V4__fix_my_youth.sql` corrects one match in place (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
 
 ## API
 
@@ -97,4 +101,4 @@ ADMIN_GOOGLE_SUBS=...   # or ADMIN_EMAILS=...
 
 Railway sets `PORT` itself.
 
-**Frontend → Vercel**: Root Directory `frontend`; variables `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_GOOGLE_SUBS` (or `ADMIN_EMAILS`), `BACKEND_URL` (the Railway URL). Add `https://<your-vercel-domain>/api/auth/callback/google` to the Google client's redirect URIs.
+**Frontend → Vercel**: Root Directory `frontend`; variables `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_GOOGLE_SUBS` (or `ADMIN_EMAILS`), `BACKEND_URL` (the Railway URL) and `APP_ORIGIN=https://my-watchlist-sf.vercel.app`, so the write guards compare against a fixed public origin. Add `https://<your-vercel-domain>/api/auth/callback/google` to the Google client's redirect URIs.

@@ -16,6 +16,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +63,22 @@ class DatabaseSchemaTest {
 
         assertThatThrownBy(() -> repository.saveAndFlush(entry(TmdbMediaType.TV, TEST_ID + 1, Category.ANIME)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** V2 and V3 carry the owner's initial list; a changed or reordered import shows up here, not after deployment. */
+    @Test
+    void seedMigrationsLoadTheInitialWatchlistInListOrder() {
+        List<Entry> seeded = repository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(e -> e.getTmdbId() < TEST_ID)
+                .toList();
+        List<String> titles = seeded.stream().map(Entry::getTitle).toList();
+
+        assertThat(seeded).hasSize(162);
+        assertThat(titles.getFirst()).isEqualTo("Undercover High School");
+        assertThat(titles.getLast()).isEqualTo("Wotakoi: Love Is Hard for Otaku");
+        // V3 slots its titles next to their neighbours from the list instead of on top
+        assertThat(titles.indexOf("SEE HEAR LOVE")).isEqualTo(titles.indexOf("Blood: The Last Vampire") + 1);
+        assertThat(seeded).extracting(Entry::getPosterPath).doesNotContainNull();
     }
 
     static Entry entry(TmdbMediaType type, int tmdbId, Category category) {

@@ -23,7 +23,8 @@ class AppliedMigrationsUnchangedTest {
     static final Map<String, Integer> APPLIED = Map.of(
             "V1__init.sql", -2048027621,
             "V2__import_watchlist.sql", -1583870730,
-            "V3__import_watchlist_leftovers.sql", -2001885081
+            "V3__import_watchlist_leftovers.sql", -2001885081,
+            "V4__fix_my_youth.sql", -1915993479
     );
 
     @Test
