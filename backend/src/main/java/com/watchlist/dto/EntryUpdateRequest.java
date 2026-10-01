@@ -10,4 +10,6 @@ import jakarta.validation.constraints.Size;
 public record EntryUpdateRequest(
         @NotNull Category category,
         @Min(1) @Max(10) Integer myRating,
-        @Size(max = 2000) String review) {}
+        @Size(max = 2000) String review,
+        @Size(max = 255) String titleBe,
+        @Size(max = 4000) String overviewBe) {}

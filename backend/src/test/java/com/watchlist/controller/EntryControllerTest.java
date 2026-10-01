@@ -63,7 +63,7 @@ class EntryControllerTest {
     static EntryResponse sample(long id, String title) {
         return new EntryResponse(id, 693134, TmdbMediaType.MOVIE, title, "Dune: Part Two", Category.MOVIE, 2024,
                 List.of("US"), List.of(878, 12), List.of("Timothée Chalamet", "Zendaya"), "Paul Atreides...",
-                null, null, 9, "Great", OffsetDateTime.now());
+                null, null, 9, "Great", "Дзюна: Частка другая", null, OffsetDateTime.now());
     }
 
     @Autowired MockMvc mvc;
@@ -86,7 +86,8 @@ class EntryControllerTest {
                 .andExpect(jsonPath("$[0].countries[0]").value("US"))
                 .andExpect(jsonPath("$[0].myRating").value(9));
         mvc.perform(get("/api/entries/1")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.cast[1]").value("Zendaya"));
+                .andExpect(jsonPath("$.cast[1]").value("Zendaya"))
+                .andExpect(jsonPath("$.titleBe").value("Дзюна: Частка другая"));
     }
 
     @Test
@@ -140,9 +141,9 @@ class EntryControllerTest {
         mvc.perform(patch("/api/entries/1").with(googleUser(STRANGER)).contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isForbidden());
         mvc.perform(patch("/api/entries/1").with(googleUser(ADMIN)).contentType(APPLICATION_JSON)
-                        .content("{\"category\": \"ANIME\", \"myRating\": 0}"))
+                        .content("{\"category\": \"ANIME\", \"myRating\": 0, \"titleBe\": \"" + "б".repeat(256) + "\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("myRating"));
+                .andExpect(jsonPath("$.errors[*].field", containsInAnyOrder("myRating", "titleBe")));
         given(service.update(eq(1L), any())).willReturn(sample(1L, "Dune: Part Two"));
         mvc.perform(patch("/api/entries/1").with(googleUser(ADMIN)).contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());

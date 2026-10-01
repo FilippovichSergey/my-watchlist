@@ -3,7 +3,7 @@ import Link from "next/link";
 import { fetchPublicEntries } from "@/lib/backend";
 import { getLocale } from "@/lib/locale.server";
 import { t, type Locale } from "@/lib/i18n";
-import { categoryName, countryName, genreName } from "@/lib/catalog";
+import { categoryName, countryName, displayTitle, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
 import { FilterPanel, FilterSheet, SearchBar } from "./Filters";
 import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
@@ -42,7 +42,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const filtered = entries.filter(
     (e) =>
       (!values.category || values.category === "ALL" || e.category === values.category) &&
-      (!q || e.title.toLowerCase().includes(q) || (e.originalTitle ?? "").toLowerCase().includes(q)) &&
+      (!q ||
+        e.title.toLowerCase().includes(q) ||
+        (e.originalTitle ?? "").toLowerCase().includes(q) ||
+        (e.titleBe ?? "").toLowerCase().includes(q)) &&
       (year === null || e.releaseYear === year) &&
       (!values.country || e.countries.includes(values.country)) &&
       (genre === null || e.genreIds.includes(genre)) &&
@@ -144,6 +147,7 @@ function Found({ n, locale, showReset, className }: { n: number; locale: Locale;
 }
 
 function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
+  const title = displayTitle(entry, locale);
   const facts = [
     entry.releaseYear,
     categoryName(entry.category, locale),
@@ -160,7 +164,7 @@ function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
         {entry.posterUrl && (
           <Image
             src={entry.posterUrl}
-            alt={entry.title}
+            alt={title}
             fill
             className="object-cover transition-transform duration-200 group-hover:scale-105"
             sizes="104px"
@@ -168,7 +172,7 @@ function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
         )}
       </div>
       <div className="flex min-w-0 flex-col gap-[5px] px-4 pb-3 pt-[14px] desk:gap-[6px] desk:px-[18px] desk:pb-[14px] desk:pt-4">
-        <p className="line-clamp-2 text-pretty text-[15px] font-semibold leading-[1.25] tracking-[-0.1px]">{entry.title}</p>
+        <p className="line-clamp-2 text-pretty text-[15px] font-semibold leading-[1.25] tracking-[-0.1px]">{title}</p>
         <p className="text-xs text-muted">{facts}</p>
         <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-2 desk:pt-[10px]">
           <Numeral value={entry.tmdbRating != null ? entry.tmdbRating.toFixed(1) : "–"} label="TMDB" />

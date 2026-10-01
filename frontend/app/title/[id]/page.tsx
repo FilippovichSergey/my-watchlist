@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { fetchPublicEntry } from "@/lib/backend";
 import { getLocale } from "@/lib/locale.server";
 import { t } from "@/lib/i18n";
-import { categoryName, countryName, genreName } from "@/lib/catalog";
+import { categoryName, countryName, displayOverview, displayTitle, genreName } from "@/lib/catalog";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -15,14 +15,16 @@ async function load(params: Props["params"]) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const entry = await load(params);
-  return { title: entry ? `${entry.title} — My Watchlist` : "My Watchlist" };
+  const [entry, locale] = await Promise.all([load(params), getLocale()]);
+  return { title: entry ? `${displayTitle(entry, locale)} — My Watchlist` : "My Watchlist" };
 }
 
 export default async function TitlePage({ params }: Props) {
   const [entry, locale] = await Promise.all([load(params), getLocale()]);
   if (!entry) notFound();
 
+  const title = displayTitle(entry, locale);
+  const overview = displayOverview(entry, locale);
   const facts: [string, string][] = [];
   if (entry.releaseYear) facts.push([t(locale, "detail.year"), String(entry.releaseYear)]);
   if (entry.countries.length) facts.push([t(locale, "detail.country"), entry.countries.map((c) => countryName(c, locale)).join(", ")]);
@@ -39,12 +41,18 @@ export default async function TitlePage({ params }: Props) {
       <div className="flex flex-col sm:flex-row gap-8">
         <div className="relative w-full sm:w-64 aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-subtle">
           {entry.posterUrl && (
-            <Image src={entry.posterUrl} alt={entry.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 256px" priority />
+            <Image src={entry.posterUrl} alt={title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 256px" priority />
           )}
         </div>
         <div className="flex flex-col gap-4 min-w-0">
           <div>
-            <h1 className="font-display text-3xl font-semibold leading-tight">{entry.title}</h1>
+            <h1 className="font-display text-3xl font-semibold leading-tight">{title}</h1>
+            {title !== entry.title && (
+              <p className="text-muted mt-1">
+                <span className="label-caps mr-2">{t(locale, "detail.englishTitle")}</span>
+                {entry.title}
+              </p>
+            )}
             {entry.originalTitle && entry.originalTitle !== entry.title && (
               <p className="text-muted mt-1">
                 <span className="label-caps mr-2">{t(locale, "detail.originalTitle")}</span>
@@ -61,10 +69,10 @@ export default async function TitlePage({ params }: Props) {
               </div>
             ))}
           </dl>
-          {entry.overview && (
+          {overview && (
             <section>
               <h2 className="label-caps mb-1">{t(locale, "detail.overview")}</h2>
-              <p className="text-sm leading-relaxed">{entry.overview}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line">{overview}</p>
             </section>
           )}
           {entry.review && (

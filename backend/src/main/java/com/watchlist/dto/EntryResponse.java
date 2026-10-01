@@ -13,6 +13,8 @@ import java.util.List;
  * @param cast leading cast as TMDB spells the names
  * @param myRating the owner's 1-10 score
  * @param review the owner's feedback
+ * @param titleBe the owner's Belarusian title, null until entered
+ * @param overviewBe the owner's Belarusian description, null until entered
  */
 public record EntryResponse(
         Long id,
@@ -30,4 +32,6 @@ public record EntryResponse(
         BigDecimal tmdbRating,
         Integer myRating,
         String review,
+        String titleBe,
+        String overviewBe,
         OffsetDateTime createdAt) {}

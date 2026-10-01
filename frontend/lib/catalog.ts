@@ -53,3 +53,12 @@ const CATEGORY_NAMES: Record<Category, { en: string; be: string }> = {
 export function categoryName(category: Category, locale: Locale): string {
   return CATEGORY_NAMES[category][locale];
 }
+
+/** The title in the UI language: the owner's Belarusian one when it exists, otherwise TMDB's English title. */
+export function displayTitle(entry: { title: string; titleBe: string | null }, locale: Locale): string {
+  return locale === "be" && entry.titleBe ? entry.titleBe : entry.title;
+}
+
+export function displayOverview(entry: { overview: string | null; overviewBe: string | null }, locale: Locale): string | null {
+  return locale === "be" && entry.overviewBe ? entry.overviewBe : entry.overview;
+}

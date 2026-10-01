@@ -59,6 +59,8 @@ public class EntryService {
         entry.setCategory(request.category());
         entry.setMyRating(request.myRating());
         entry.setReview(blankToNull(request.review()));
+        entry.setTitleBe(blankToNull(request.titleBe()));
+        entry.setOverviewBe(blankToNull(request.overviewBe()));
         return toResponse(repository.save(entry));
     }
 
@@ -115,6 +117,7 @@ public class EntryService {
                 .filter(s -> s.chars().allMatch(Character::isDigit)).map(Integer::valueOf).toList();
         return new EntryResponse(e.getId(), e.getTmdbId(), e.getMediaType(), e.getTitle(), e.getOriginalTitle(),
                 e.getCategory(), e.getReleaseYear(), split(e.getCountries()), genreIds, split(e.getCastNames()),
-                e.getOverview(), posterUrl, e.getTmdbRating(), e.getMyRating(), e.getReview(), e.getCreatedAt());
+                e.getOverview(), posterUrl, e.getTmdbRating(), e.getMyRating(), e.getReview(), e.getTitleBe(),
+                e.getOverviewBe(), e.getCreatedAt());
     }
 }

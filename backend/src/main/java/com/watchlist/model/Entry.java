@@ -53,6 +53,12 @@ public class Entry {
     @Column(columnDefinition = "TEXT")
     private String overview;
 
+    /** The owner's Belarusian title and description; shown instead of the TMDB text in the Belarusian UI. */
+    private String titleBe;
+
+    @Column(columnDefinition = "TEXT")
+    private String overviewBe;
+
     /** TMDB poster path such as "/abc.jpg"; the image base URL is applied when responding. */
     private String posterPath;
 

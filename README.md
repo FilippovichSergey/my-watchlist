@@ -15,7 +15,7 @@ Live: https://my-watchlist-sf.vercel.app/ · Repo: https://github.com/Filippovic
 - The list as cards — poster, title, year · category · countries, and two numerals: the TMDB rating and the owner's own rating. Cards are ordered by the owner's rating, highest first; unrated titles follow, newest first. Category tabs sit in the header; the main column has a title search, a strip with totals per category and the owner's average rating, and the card grid. Filters by year, country, genre, actor, TMDB rating and own rating live in a sidebar (a bottom sheet on screens narrower than 900px). Category, filters and search are all URL parameters, so a filtered view can be shared; whenever any of them narrows the list, a "Reset all filters" link next to the found count leads back to the whole list.
 - Light and dark themes: the system preference by default, a header button switches and the browser remembers the choice. The look follows the owner's "Running Log" design system — warm paper background, white cards on a soft shadow, one orange accent, Jost and Oswald self-hosted through `next/font` (no runtime requests to Google).
 - A page per title: original title, year, countries, genres, leading cast, TMDB rating, overview, the owner's rating and feedback. Facts come from TMDB when a title is added; the admin page can re-read them any time — one title with "Refresh from TMDB", or the whole list with "Refresh all", which runs in the background one title at a time inside the TMDB budget (about 30 titles a minute), shows its progress and survives a page reload. That is also how rows imported before these fields existed get filled.
-- Two UI languages, Belarusian (default) and English, switched in the header and remembered in a cookie. TMDB content itself (titles, overviews, actor names) stays in English; country and genre names are localised.
+- Two UI languages, Belarusian (default) and English, switched in the header and remembered in a cookie. TMDB content (titles, overviews, actor names) is English; country and genre names are localised, and the owner can enter a Belarusian title and description per title in the admin page — the Belarusian UI then shows those (with the English title underneath on the title page) and falls back to the TMDB text where they are missing. TMDB has no Belarusian translations for this list, so nothing is imported automatically.
 
 ## How access works
 
@@ -88,10 +88,10 @@ Corrections to seeded data update the existing row in place (`UPDATE ... WHERE m
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/api/entries` | public | all titles with facts, owner rating and feedback |
+| GET | `/api/entries` | public | all titles with facts, owner rating, feedback and the owner's Belarusian title/description (`titleBe`, `overviewBe`, null until entered) |
 | GET | `/api/entries/{id}` | public | one title; 404 if missing |
 | POST | `/api/entries` | admin | `{tmdbId, mediaType: MOVIE or TV, category: MOVIE / ANIME / SERIAL, myRating?, review?}` — 409 if already listed, 422 if TMDB has no such title |
-| PATCH | `/api/entries/{id}` | admin | `{category, myRating?, review?}` — the owner-editable part |
+| PATCH | `/api/entries/{id}` | admin | `{category, myRating?, review?, titleBe?, overviewBe?}` — the owner-editable part |
 | POST | `/api/entries/{id}/refresh` | admin | re-reads the title's facts from TMDB |
 | POST | `/api/entries/refresh` | admin | starts a background re-read of every title, each lookup paid from the caller's TMDB budget (waits when it is spent); 202 with `{running, total, done, failed, startedAt, finishedAt, error}`; `error` is null for a run that went through every title (`done + failed == total`) and names the reason when a run stopped early or could not start. One run at a time — a second call joins the current one |
 | GET | `/api/entries/refresh` | admin | progress of the current or last run |

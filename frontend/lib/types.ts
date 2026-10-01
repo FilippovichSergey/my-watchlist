@@ -23,6 +23,9 @@ export interface Entry {
   myRating: number | null;
   /** The owner's feedback, shown publicly. */
   review: string | null;
+  /** The owner's Belarusian title and description; the Belarusian UI prefers them to the TMDB text. */
+  titleBe: string | null;
+  overviewBe: string | null;
   createdAt: string;
 }
 
@@ -51,6 +54,8 @@ export interface UpdateEntryInput {
   category: Category;
   myRating: number | null;
   review: string | null;
+  titleBe: string | null;
+  overviewBe: string | null;
 }
 
 /** State of the background "refresh all" job on the backend; there is at most one run at a time. */

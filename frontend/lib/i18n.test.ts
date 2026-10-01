@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
-import { categoryName, countryName, genreName } from "./catalog";
+import { categoryName, countryName, displayOverview, displayTitle, genreName } from "./catalog";
 import { EMPTY_FILTERS, activeFilterCount, filtersFrom, hasActiveFilters, queryWith } from "./filters";
 
 describe("i18n", () => {
@@ -27,6 +27,17 @@ describe("i18n", () => {
     expect(countryName("XX", "en")).toBe("XX");
     expect(countryName("not-a-code", "en")).toBe("not-a-code");
     expect(categoryName("SERIAL", "be")).toBe("Серыял");
+  });
+});
+
+describe("Belarusian text", () => {
+  it("prefers the owner's Belarusian title and description in the Belarusian UI only", () => {
+    const entry = { title: "Dune", titleBe: "Дзюна", overview: "Sand.", overviewBe: null };
+    expect(displayTitle(entry, "be")).toBe("Дзюна");
+    expect(displayTitle(entry, "en")).toBe("Dune");
+    expect(displayTitle({ ...entry, titleBe: null }, "be")).toBe("Dune");
+    expect(displayOverview(entry, "be")).toBe("Sand.");
+    expect(displayOverview({ ...entry, overviewBe: "Пясок." }, "be")).toBe("Пясок.");
   });
 });
 
