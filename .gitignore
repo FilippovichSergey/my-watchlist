@@ -27,5 +27,8 @@ Thumbs.db
 # local review notes
 review/
 
+# personal how-to note for sharing, kept out of the repo
+docs/how-to-build.be.md
+
 # root tooling (Railway IaC SDK)
 /node_modules/
