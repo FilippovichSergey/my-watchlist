@@ -81,6 +81,21 @@ class DatabaseSchemaTest {
         assertThat(seeded).extracting(Entry::getPosterPath).doesNotContainNull();
     }
 
+    /** V7 translates the list; it must fill the seeded rows it knows and leave everything else alone. */
+    @Test
+    void translationMigrationFillsBelarusianTextForSeededTitles() {
+        List<Entry> seeded = repository.findAll().stream().filter(e -> e.getTmdbId() < TEST_ID).toList();
+        Entry parasite = seeded.stream().filter(e -> e.getTmdbId() == 496243).findFirst().orElseThrow();
+
+        assertThat(parasite.getTitleBe()).isEqualTo("Паразіты");
+        assertThat(parasite.getOverviewBe()).startsWith("Беспрацоўная сям'я Кі Тхэка");
+        assertThat(seeded).filteredOn(e -> e.getTitleBe() != null).hasSize(150);
+        assertThat(seeded).filteredOn(e -> e.getTitleBe() != null).extracting(Entry::getOverviewBe).doesNotContainNull();
+        // A description with paragraphs is stored with real line breaks, not with a visible backslash
+        assertThat(seeded).filteredOn(e -> e.getTmdbId() == 16830).singleElement()
+                .satisfies(hellsing -> assertThat(hellsing.getOverviewBe()).contains("\n\n").doesNotContain("\\"));
+    }
+
     static Entry entry(TmdbMediaType type, int tmdbId, Category category) {
         Entry e = new Entry();
         e.setTmdbId(tmdbId);

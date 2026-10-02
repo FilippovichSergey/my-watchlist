@@ -26,7 +26,8 @@ class AppliedMigrationsUnchangedTest {
             "V3__import_watchlist_leftovers.sql", -2001885081,
             "V4__fix_my_youth.sql", -1915993479,
             "V5__title_details.sql", -671080950,
-            "V6__belarusian_text.sql", -1420192314
+            "V6__belarusian_text.sql", -1420192314,
+            "V7__belarusian_translations.sql", -1511094081
     );
 
     @Test
