@@ -106,19 +106,23 @@ Errors are RFC 9457 problem details; validation failures add an `errors[]` list 
 
 ## Deployment
 
-**Backend → Railway** from `backend/Dockerfile`, with the PostgreSQL plugin. Deployed with the Railway CLI: link the `backend/` directory itself to the service (`cd backend && railway link -p my-watchlist -e production -s backend`) and upload with `railway up --service backend` — `railway up` sends the *linked* directory, so linking the repo root would upload the whole repo and the Dockerfile would not be found. `.railwayignore` keeps `.env` and `target/` out of the upload.
+**Database → Neon** (free serverless PostgreSQL). Create a project, take the *direct* (non-pooled) endpoint — Flyway needs plain sessions — and pass it as `DATABASE_URL=jdbc:postgresql://<host>/<db>?sslmode=require` with `DATABASE_USER` / `DATABASE_PASSWORD`. Neon suspends the compute after a few idle minutes and resumes on the next connection, which costs the first request about a second.
 
-The service itself is described as infrastructure as code in `backend/.railway/railway.ts` (Dockerfile builder, healthcheck on `/api/entries`, restart policy, and the variable *names*). Secrets are never in that file: `preserve()` keeps whatever is set in the dashboard. Preview and apply changes with `railway config plan` / `railway config apply` from `backend/`; the `railway` npm package in the repo root is the SDK those commands need (on Windows, put the directory holding `railway.exe` on `PATH` first, because the SDK calls the CLI to check its version). Variables:
+**Backend → Render** (free Docker web service), described as a Blueprint in `render.yaml`: Dockerfile build from `backend/`, Frankfurt, health check on `/api/health`, auto-deploy from `main`. Only variable *names* are in the file; values are entered in the dashboard:
 
 ```
-DATABASE_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
-DATABASE_USER=${{Postgres.PGUSER}}
-DATABASE_PASSWORD=${{Postgres.PGPASSWORD}}
+DATABASE_URL=jdbc:postgresql://<neon host>/<db>?sslmode=require
+DATABASE_USER=...
+DATABASE_PASSWORD=...
 TMDB_ACCESS_TOKEN=...
 GOOGLE_CLIENT_ID=...
 ADMIN_GOOGLE_SUBS=...   # or ADMIN_EMAILS=...
 ```
 
-Railway sets `PORT` itself.
+Render sets `PORT` itself; `JAVA_TOOL_OPTIONS` in the Blueprint sizes the JVM for the 512 MB instance. Free instances spin down after 15 idle minutes and need up to a minute to start again, so `.github/workflows/keepalive.yml` requests `/api/health` every 10 minutes — that endpoint touches no database, so Neon still sleeps between real visits. It runs once the repository variable `BACKEND_HEALTH_URL` is set.
 
-**Frontend → Vercel**: Root Directory `frontend`; variables `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_GOOGLE_SUBS` (or `ADMIN_EMAILS`), `BACKEND_URL` (the Railway URL) and `APP_ORIGIN=https://my-watchlist-sf.vercel.app`, so the write guards compare against a fixed public origin. Add `https://<your-vercel-domain>/api/auth/callback/google` to the Google client's redirect URIs.
+**Moving the data**: the migrations recreate the schema and the seed on an empty database; the owner's additions, ratings, feedback and Belarusian text come from an export of `GET /api/entries` turned into SQL by `backend/tools/restore_entries.py` and applied with `psql -v ON_ERROR_STOP=1 -f restore.sql "<connection string>"` (options first — the Windows `psql` ignores anything after the connection string). Ids and timestamps are preserved, and the id sequence is reset.
+
+**Frontend → Vercel**: Root Directory `frontend`; variables `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_GOOGLE_SUBS` (or `ADMIN_EMAILS`), `BACKEND_URL` (the Render URL) and `APP_ORIGIN=https://my-watchlist-sf.vercel.app`, so the write guards compare against a fixed public origin. Google's OAuth client needs the production redirect URI `https://my-watchlist-sf.vercel.app/api/auth/callback/google`.
+
+Until the move is complete the backend also runs on Railway (`backend/.railway/railway.ts`, deployed with `cd backend && railway up --service backend`); those files go away once Render serves production.

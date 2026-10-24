@@ -32,3 +32,6 @@ docs/how-to-build.be.md
 
 # root tooling (Railway IaC SDK)
 /node_modules/
+
+# local database/content backups
+backups/

@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Declared first: the refresh job lives under the public /api/entries/* pattern
                         .requestMatchers("/api/entries/refresh").hasRole(ROLE_ADMIN)
-                        .requestMatchers(HttpMethod.GET, "/api/entries", "/api/entries/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/entries", "/api/entries/*", "/api/health").permitAll()
                         .anyRequest().hasRole(ROLE_ADMIN))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
         return http.build();

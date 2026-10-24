@@ -1,0 +1,20 @@
+# Render's free instances spin down after 15 idle minutes and take up to a minute to come back, which is
+# longer than a page load may wait. A request every 10 minutes keeps the backend awake; the health endpoint
+# does not query the database, so Neon still suspends between real visits.
+# Set the repository variable BACKEND_HEALTH_URL (Settings → Secrets and variables → Actions → Variables),
+# e.g. https://watchlist-backend-xxxx.onrender.com/api/health. GitHub pauses schedules after 60 days without
+# commits; any push re-enables them.
+name: Keep the backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    if: ${{ vars.BACKEND_HEALTH_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request the health endpoint (waits for a cold start if needed)
+        run: curl -fsS --max-time 90 --retry 3 --retry-delay 20 --retry-all-errors "${{ vars.BACKEND_HEALTH_URL }}"

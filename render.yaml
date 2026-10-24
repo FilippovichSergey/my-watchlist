@@ -1,0 +1,33 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec): the backend as one free Docker web service.
+# Only variable NAMES live here; values are entered in the Render dashboard (sync: false) and never committed.
+# PORT is set by Render; the application listens on ${PORT:8080}. The health check must not touch the database,
+# so that Neon can suspend when idle while the service itself stays awake (see .github/workflows/keepalive.yml).
+services:
+  - type: web
+    name: watchlist-backend
+    runtime: docker
+    repo: https://github.com/FilippovichSergey/my-watchlist
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL          # jdbc:postgresql://<neon host>/<db>?sslmode=require (direct endpoint, not the pooler)
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: TMDB_ACCESS_TOKEN     # TMDB API Read Access Token (v4)
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_GOOGLE_SUBS     # or ADMIN_EMAILS; at least one must be set
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: JAVA_TOOL_OPTIONS     # 512 MB instance: give the heap most of it, keep GC and thread stacks small
+        value: -XX:MaxRAMPercentage=65 -XX:+UseSerialGC -Xss512k
