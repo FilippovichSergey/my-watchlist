@@ -63,6 +63,8 @@ function EntryRow({
   const [overviewBe, setOverviewBe] = useState(entry.overviewBe ?? "");
   const [busy, setBusy] = useState(false);
   const field = "border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-transparent";
+  const caption = "flex flex-col gap-1";
+  const captionText = "text-xs text-gray-500";
   const action = "text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 disabled:opacity-50";
 
   function startEditing() {
@@ -109,33 +111,31 @@ function EntryRow({
               <CategoryPicker value={category} onChange={setCategory} />
               <RatingSelect value={myRating} onChange={setMyRating} />
             </div>
-            <input
-              type="text"
-              value={titleBe}
-              maxLength={255}
-              onChange={(e) => setTitleBe(e.target.value)}
-              placeholder={t("admin.titleBe")}
-              aria-label={t("admin.titleBe")}
-              className={field}
-            />
-            <textarea
-              value={overviewBe}
-              maxLength={4000}
-              onChange={(e) => setOverviewBe(e.target.value)}
-              placeholder={t("admin.overviewBe")}
-              aria-label={t("admin.overviewBe")}
-              rows={4}
-              className={`${field} resize-none`}
-            />
-            <textarea
-              value={review}
-              maxLength={2000}
-              onChange={(e) => setReview(e.target.value)}
-              placeholder={t("admin.reviewPlaceholder")}
-              aria-label={t("admin.reviewPlaceholder")}
-              rows={3}
-              className={`${field} resize-none`}
-            />
+            <label className={caption}>
+              <span className={captionText}>{t("admin.titleBe")}</span>
+              <input type="text" value={titleBe} maxLength={255} onChange={(e) => setTitleBe(e.target.value)} className={field} />
+            </label>
+            <label className={caption}>
+              <span className={captionText}>{t("admin.overviewBe")}</span>
+              <textarea
+                value={overviewBe}
+                maxLength={4000}
+                onChange={(e) => setOverviewBe(e.target.value)}
+                rows={4}
+                className={`${field} resize-none`}
+              />
+            </label>
+            <label className={caption}>
+              <span className={captionText}>{t("admin.review")}</span>
+              <textarea
+                value={review}
+                maxLength={2000}
+                onChange={(e) => setReview(e.target.value)}
+                placeholder={t("admin.reviewPlaceholder")}
+                rows={3}
+                className={`${field} resize-none`}
+              />
+            </label>
             <div className="flex gap-3">
               <button onClick={save} disabled={busy} className="px-4 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {busy ? t("admin.saving") : t("admin.save")}

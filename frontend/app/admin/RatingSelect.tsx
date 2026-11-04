@@ -28,7 +28,8 @@ export function CategoryPicker({ value, onChange }: { value: string; onChange: (
   const t = useT();
   const labels = { MOVIE: t("cat.movies"), ANIME: t("cat.anime"), SERIAL: t("cat.serials") } as const;
   return (
-    <div className="flex gap-2">
+    <div className="flex items-center gap-2 text-sm">
+      <span className="text-gray-500">{t("admin.category")}</span>
       {(["MOVIE", "ANIME", "SERIAL"] as const).map((c) => (
         <button
           key={c}

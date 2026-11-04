@@ -5,10 +5,10 @@ import { getLocale } from "@/lib/locale.server";
 import { t, type Locale } from "@/lib/i18n";
 import { categoryName, countryName, displayTitle, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
-import { FilterPanel, FilterSheet, SearchBar } from "../Filters";
+import { FilterPanel, FilterSheet, SearchBar, SortSelect } from "../Filters";
 import { RememberListUrl } from "../RememberListUrl";
-import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
-import { byMyRatingDesc } from "@/lib/sort";
+import { filtersFrom, hasActiveFilters, parseRatingRange, type FilterOptions } from "@/lib/filters";
+import { sortEntries, toSortKey } from "@/lib/sort";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -37,7 +37,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const year = num(values.year);
   const genre = num(values.genre);
   const rating = num(values.rating);
-  const my = num(values.my);
+  const my = parseRatingRange(values.my);
   const actor = values.actor.trim().toLowerCase();
   const q = values.q.trim().toLowerCase();
   const filtered = entries.filter(
@@ -52,10 +52,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       (genre === null || e.genreIds.includes(genre)) &&
       (!actor || e.cast.some((name) => name.toLowerCase().includes(actor))) &&
       (rating === null || (e.tmdbRating ?? 0) >= rating) &&
-      (my === null || (e.myRating ?? 0) >= my)
+      (my === null || (e.myRating != null && e.myRating >= my.min && e.myRating <= my.max))
   );
 
-  const shown = [...filtered].sort(byMyRatingDesc);
+  const shown = sortEntries(filtered, toSortKey(values.sort), locale, (e) => displayTitle(e, locale));
 
   // Options and statistics describe the whole list; only "found" follows the filters
   const options: FilterOptions = {
@@ -102,13 +102,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           {stats.map((s) => (
             <div key={s.label} className={`flex-col ${s.desktopOnly ? "hidden desk:flex" : "flex"}`}>
               <span className="text-[22px] font-black leading-[1.1] tracking-[-0.5px] text-accent">{s.value}</span>
-              <span className="mt-[2px] text-[9px] font-bold uppercase tracking-[0.8px] text-muted">{s.label}</span>
+              <span className="mt-[2px] text-[11px] font-bold uppercase tracking-[0.8px] text-muted desk:text-[9px]">{s.label}</span>
             </div>
           ))}
         </div>
 
         <div className="flex items-center gap-[10px] desk:gap-[14px]">
           <SearchBar values={values} />
+          <div className="hidden desk:block">
+            <SortSelect values={values} />
+          </div>
           <div className="desk:hidden">
             <FilterSheet values={values} options={options} count={filtered.length} />
           </div>
@@ -192,7 +195,7 @@ function Numeral({ value, label, accent = false }: { value: number | string; lab
   return (
     <div className="flex flex-col">
       <span className={`numeral text-[26px] desk:text-[28px] ${accent ? "text-accent" : "text-ink"}`}>{value}</span>
-      <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.9px] text-muted">{label}</span>
+      <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.9px] text-muted desk:text-[9px]">{label}</span>
     </div>
   );
 }

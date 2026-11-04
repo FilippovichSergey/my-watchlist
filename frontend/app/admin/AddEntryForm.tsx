@@ -87,14 +87,17 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
             <CategoryPicker value={category} onChange={setCategory} />
             <RatingSelect value={myRating} onChange={setMyRating} />
           </div>
-          <textarea
-            placeholder={t("admin.reviewPlaceholder")}
-            value={review}
-            maxLength={2000}
-            onChange={(e) => setReview(e.target.value)}
-            rows={3}
-            className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-transparent resize-none"
-          />
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-gray-500">{t("admin.review")}</span>
+            <textarea
+              placeholder={t("admin.reviewPlaceholder")}
+              value={review}
+              maxLength={2000}
+              onChange={(e) => setReview(e.target.value)}
+              rows={3}
+              className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-transparent resize-none"
+            />
+          </label>
           <button
             onClick={handleAdd}
             disabled={saving}

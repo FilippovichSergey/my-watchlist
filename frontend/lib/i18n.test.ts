@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
 import { categoryName, countryName, displayOverview, displayTitle, genreName } from "./catalog";
-import { EMPTY_FILTERS, activeFilterCount, filtersFrom, hasActiveFilters, queryWith } from "./filters";
+import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, parseRatingRange, queryWith } from "./filters";
 
 describe("i18n", () => {
   it("recognises the supported UI languages only", () => {
@@ -58,5 +58,18 @@ describe("filter URLs", () => {
     expect(activeFilterCount(values)).toBe(1);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, category: "ANIME" })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, q: "a" })).toBe(true);
+  });
+
+  it("reads the own-rating filter as one score, a range or the old at-least form", () => {
+    expect(parseRatingRange("8")).toEqual({ min: 8, max: 8 });
+    expect(parseRatingRange("7-9")).toEqual({ min: 7, max: 9 });
+    expect(parseRatingRange("9-7")).toEqual({ min: 7, max: 9 });
+    expect(parseRatingRange("7+")).toEqual({ min: 7, max: 10 });
+    expect(parseRatingRange("10")).toEqual({ min: 10, max: 10 });
+    expect(parseRatingRange("11")).toBeNull();
+    expect(parseRatingRange("")).toBeNull();
+    expect(parseRatingRange("abc")).toBeNull();
+    expect(formatRatingRange(8, 8)).toBe("8");
+    expect(formatRatingRange(7, 9)).toBe("7-9");
   });
 });

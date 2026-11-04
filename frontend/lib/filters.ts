@@ -8,6 +8,8 @@ export interface FilterValues {
   my: string;
   /** Title search. */
   q: string;
+  /** Sort order; empty means the default (own rating). */
+  sort: string;
 }
 
 export interface FilterOptions {
@@ -16,7 +18,7 @@ export interface FilterOptions {
   genres: { id: number; name: string }[];
 }
 
-export const EMPTY_FILTERS: FilterValues = { category: "", year: "", country: "", genre: "", actor: "", rating: "", my: "", q: "" };
+export const EMPTY_FILTERS: FilterValues = { category: "", year: "", country: "", genre: "", actor: "", rating: "", my: "", q: "", sort: "" };
 
 export const FILTER_KEYS = Object.keys(EMPTY_FILTERS) as (keyof FilterValues)[];
 
@@ -44,3 +46,17 @@ export function queryWith(values: FilterValues, patch: Partial<FilterValues> = {
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";
 }
+
+/**
+ * The own-rating filter: one score ("8"), a range ("7-9", either way round) or, from older links,
+ * "7+" meaning 7 to 10. Anything else means no filter.
+ */
+export function parseRatingRange(value: string): { min: number; max: number } | null {
+  const m = /^(10|[1-9])(?:-(10|[1-9])|([+]))?$/.exec(value.trim());
+  if (!m) return null;
+  const a = Number(m[1]);
+  const b = m[3] ? 10 : m[2] ? Number(m[2]) : a;
+  return { min: Math.min(a, b), max: Math.max(a, b) };
+}
+
+export const formatRatingRange = (min: number, max: number) => (min === max ? String(min) : `${min}-${max}`);

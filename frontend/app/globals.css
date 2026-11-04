@@ -52,7 +52,7 @@
   }
   /* Tiny wide uppercase label under or above a number */
   .label-caps {
-    @apply text-[10px] font-bold uppercase tracking-[0.9px] text-muted;
+    @apply text-[11px] font-bold uppercase tracking-[0.9px] text-muted desk:text-[10px];
   }
   /* Filter select / text field: 44px tall where it is touched (the sheet), compact in the sidebar */
   .control {

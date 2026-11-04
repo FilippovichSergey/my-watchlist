@@ -2,17 +2,39 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useNavigation, useT } from "./providers";
-import { CalendarIcon, ClapperboardIcon, FilterIcon, GlobeIcon, HeartIcon, SearchIcon, StarIcon, UserIcon } from "./icons";
+import {
+  ArrowDownUpIcon,
+  CalendarIcon,
+  ClapperboardIcon,
+  FilterIcon,
+  GlobeIcon,
+  HeartIcon,
+  SearchIcon,
+  StarIcon,
+  UserIcon,
+} from "./icons";
 import {
   EMPTY_FILTERS,
   activeFilterCount,
+  formatRatingRange,
   hasActiveFilters,
+  parseRatingRange,
   queryWith,
   type FilterOptions,
   type FilterValues,
 } from "@/lib/filters";
+import { DEFAULT_SORT, SORT_KEYS, type SortKey } from "@/lib/sort";
+import type { MessageKey } from "@/lib/i18n";
 
 const RATINGS = [9, 8, 7, 6, 5];
+const SCORES = Array.from({ length: 10 }, (_, i) => i + 1);
+const SORT_LABELS: Record<SortKey, MessageKey> = {
+  my: "sort.my",
+  newest: "sort.newest",
+  year: "sort.year",
+  title: "sort.title",
+  tmdb: "sort.tmdb",
+};
 
 export type { FilterOptions, FilterValues };
 
@@ -22,7 +44,7 @@ function useFilterNavigation(values: FilterValues) {
   return {
     pending,
     go: (patch: Partial<FilterValues>) => navigate(queryWith(values, patch)),
-    reset: () => navigate(queryWith({ ...EMPTY_FILTERS, category: values.category })),
+    reset: () => navigate(queryWith({ ...EMPTY_FILTERS, category: values.category, sort: values.sort })),
   };
 }
 
@@ -47,6 +69,91 @@ function Field({ icon, label, className = "", children }: { icon: ReactNode; lab
         {label}
       </span>
       {children}
+    </label>
+  );
+}
+
+/**
+ * The owner's score as ten chips. One click picks that score; a click on a second chip picks the range
+ * between the two; clicking the only picked score clears it. The value travels as "8" or "7-9", so
+ * nothing here needs state of its own: the next click is read off the current value.
+ */
+function RatingRangePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const t = useT();
+  const range = parseRatingRange(value);
+  const single = range !== null && range.min === range.max ? range.min : null;
+
+  function pick(score: number) {
+    if (single === score) onChange("");
+    else if (single !== null) onChange(formatRatingRange(Math.min(single, score), Math.max(single, score)));
+    else onChange(String(score));
+  }
+  const picked = (score: number) => range !== null && score >= range.min && score <= range.max;
+  const hint =
+    range === null ? t("filter.myRatingHint") : single !== null ? t("filter.rangeHint", { n: single }) : `${range.min}–${range.max}`;
+
+  return (
+    <div className="flex flex-col gap-[6px]">
+      <div role="group" aria-label={t("filter.myRating")} className="grid grid-cols-5 gap-1">
+        {SCORES.map((score) => (
+          <button
+            key={score}
+            type="button"
+            aria-pressed={picked(score)}
+            onClick={() => pick(score)}
+            className={`focus-ring h-10 rounded-md border text-[13px] font-semibold tabular-nums transition-colors duration-150 desk:h-7 desk:text-xs ${
+              picked(score) ? "border-accent bg-accent text-white" : "border-line bg-card text-ink hover:border-accent"
+            }`}
+          >
+            {score}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-start justify-between gap-2 text-[11px] text-muted">
+        <span>{hint}</span>
+        {range !== null && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="focus-ring shrink-0 rounded font-semibold text-accent underline-offset-2 hover:underline"
+          >
+            {t("filter.clear")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Sort order; a compact select in the desktop search row, a full field inside the mobile sheet. */
+export function SortSelect({ values, sheet = false }: { values: FilterValues; sheet?: boolean }) {
+  const t = useT();
+  const { go } = useFilterNavigation(values);
+  const select = (
+    <select
+      aria-label={t("sort.label")}
+      className={sheet ? "control" : "control w-auto py-[6px]"}
+      value={values.sort}
+      onChange={(e) => go({ sort: e.target.value })}
+    >
+      {SORT_KEYS.map((key) => (
+        <option key={key} value={key === DEFAULT_SORT ? "" : key}>
+          {t(SORT_LABELS[key])}
+        </option>
+      ))}
+    </select>
+  );
+  if (sheet) {
+    return (
+      <Field icon={<ArrowDownUpIcon size={14} />} label={t("sort.label")} className="col-span-2">
+        {select}
+      </Field>
+    );
+  }
+  return (
+    <label className="flex items-center gap-2">
+      <span className="label-caps whitespace-nowrap">{t("sort.label")}</span>
+      {select}
     </label>
   );
 }
@@ -94,18 +201,21 @@ function FilterFields({ values, options, sheet = false }: { values: FilterValues
           onKeyDown={(e) => e.key === "Enter" && commitActor()}
         />
       </Field>
-      <Field icon={<StarIcon size={size} />} label={sheet ? "TMDB" : t("filter.rating")}>
+      <Field icon={<StarIcon size={size} />} label={sheet ? "TMDB" : t("filter.rating")} className={wide}>
         <select className="control" value={values.rating} onChange={(e) => go({ rating: e.target.value })}>
           {any}
           {RATINGS.map((r) => <option key={r} value={r}>≥ {r}</option>)}
         </select>
       </Field>
-      <Field icon={<HeartIcon size={size} />} label={t("filter.myRating")}>
-        <select className="control" value={values.my} onChange={(e) => go({ my: e.target.value })}>
-          {any}
-          {RATINGS.map((r) => <option key={r} value={r}>≥ {r}</option>)}
-        </select>
-      </Field>
+      <div className={`flex flex-col gap-[6px] desk:gap-[7px] ${wide}`}>
+        <span className="label-caps flex items-center gap-[6px] desk:gap-[7px]">
+          <span className="flex text-accent">
+            <HeartIcon size={size} />
+          </span>
+          {t("filter.myRating")}
+        </span>
+        <RatingRangePicker value={values.my} onChange={(my) => go({ my })} />
+      </div>
     </>
   );
 }
@@ -223,6 +333,7 @@ export function FilterSheet({ values, options, count }: { values: FilterValues; 
               <ResetButton onClick={reset} />
             </div>
             <div className="grid grid-cols-2 gap-[14px]">
+              <SortSelect values={values} sheet />
               <FilterFields values={values} options={options} sheet />
             </div>
             <button
