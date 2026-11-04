@@ -1,6 +1,0 @@
-# Never upload secrets or build output with `railway up`
-.env
-.env.*
-target/
-.mvn/
-*.log

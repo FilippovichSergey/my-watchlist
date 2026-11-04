@@ -4,5 +4,3 @@
 target/
 .mvn/
 *.log
-.railwayignore
-.railway/
