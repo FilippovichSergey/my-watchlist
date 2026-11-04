@@ -5,8 +5,8 @@ import { getLocale } from "@/lib/locale.server";
 import { t, type Locale } from "@/lib/i18n";
 import { categoryName, countryName, displayTitle, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
-import { FilterPanel, FilterSheet, SearchBar } from "./Filters";
-import { RememberListUrl } from "./RememberListUrl";
+import { FilterPanel, FilterSheet, SearchBar } from "../Filters";
+import { RememberListUrl } from "../RememberListUrl";
 import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
 import { byMyRatingDesc } from "@/lib/sort";
 

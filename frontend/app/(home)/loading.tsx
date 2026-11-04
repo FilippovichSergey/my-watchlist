@@ -1,4 +1,8 @@
-/** Shown while the server is still fetching: the shape of the page, so nothing jumps when the content arrives. */
+/**
+ * Shown while the server is still fetching the list: the shape of the home page, so nothing jumps when the
+ * content arrives. It lives in this route group on purpose: a loading boundary streams the page shell with
+ * status 200, which would turn the title page's not-found answer into a soft 404.
+ */
 export default function Loading() {
   return (
     <div aria-busy="true" className="flex flex-col gap-[14px] desk:grid desk:grid-cols-[250px_minmax(0,1fr)] desk:items-start desk:gap-6">
