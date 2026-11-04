@@ -1,0 +1,57 @@
+# Daily copy of the whole list, committed to data/watchlist-export.json whenever it changed.
+# The export is what GET /api/entries returns (public data), sorted by id and pretty-printed, so a
+# git diff shows exactly which titles changed; backend/tools/restore_entries.py turns a copy back
+# into SQL. A list that shrank by more than a fifth is not written: a half-empty database must not
+# overwrite the only copy, so the job fails instead and the failure shows up under Actions.
+# Needs the repository variable BACKEND_URL, e.g. https://watchlist-backend-xxxx.onrender.com.
+name: Back up the list
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: ${{ vars.BACKEND_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the list
+        run: curl -fsS --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors "${{ vars.BACKEND_URL }}/api/entries" -o /tmp/entries.json
+
+      - name: Validate, normalise and compare with the committed copy
+        id: check
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          new = json.load(open('/tmp/entries.json', encoding='utf-8'))
+          assert isinstance(new, list) and new and {'id', 'title', 'tmdbId', 'mediaType'} <= set(new[0]), 'unexpected payload'
+          new.sort(key=lambda e: e['id'])
+          path = 'data/watchlist-export.json'
+          old = json.load(open(path, encoding='utf-8')) if os.path.exists(path) else []
+          if old and len(new) < 0.8 * len(old):
+              sys.exit(f'refusing to back up {len(new)} entries over {len(old)}: the list shrank by more than 20%')
+          text = json.dumps(new, ensure_ascii=False, indent=2) + chr(10)
+          changed = not os.path.exists(path) or open(path, encoding='utf-8').read() != text
+          if changed:
+              os.makedirs('data', exist_ok=True)
+              open(path, 'w', encoding='utf-8', newline=chr(10)).write(text)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('changed=' + str(changed).lower() + chr(10))
+              out.write('count=' + str(len(new)) + chr(10))
+          print(len(new), 'entries, changed:', changed)
+          PY
+
+      - name: Commit the new copy
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/watchlist-export.json
+          git commit -m "Back up the list: ${{ steps.check.outputs.count }} entries"
+          git push
