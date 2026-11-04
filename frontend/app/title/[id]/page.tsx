@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fetchPublicEntry } from "@/lib/backend";
 import { getLocale } from "@/lib/locale.server";
 import { t } from "@/lib/i18n";
 import { categoryName, countryName, displayOverview, displayTitle, genreName } from "@/lib/catalog";
+import { BackLink } from "./BackLink";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,7 +16,21 @@ async function load(params: Props["params"]) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [entry, locale] = await Promise.all([load(params), getLocale()]);
-  return { title: entry ? `${displayTitle(entry, locale)} — My Watchlist` : "My Watchlist" };
+  if (!entry) return { title: { absolute: "My Watchlist" } };
+  const title = displayTitle(entry, locale);
+  const description = displayOverview(entry, locale) ?? t(locale, "meta.description");
+  // Shared links show the poster and the description in the viewer's language
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: entry.mediaType === "MOVIE" ? "video.movie" : "video.tv_show",
+      images: entry.posterUrl ? [{ url: entry.posterUrl, alt: title }] : undefined,
+    },
+    twitter: { card: entry.posterUrl ? "summary_large_image" : "summary" },
+  };
 }
 
 export default async function TitlePage({ params }: Props) {
@@ -35,9 +49,7 @@ export default async function TitlePage({ params }: Props) {
 
   return (
     <article className="card flex flex-col gap-6 p-5 desk:p-8">
-      <Link href="/" className="text-sm text-muted transition-colors duration-150 hover:text-accent">
-        {t(locale, "detail.back")}
-      </Link>
+      <BackLink label={t(locale, "detail.back")} />
       <div className="flex flex-col sm:flex-row gap-8">
         <div className="relative w-full sm:w-64 aspect-[2/3] shrink-0 rounded-xl overflow-hidden bg-subtle">
           {entry.posterUrl && (

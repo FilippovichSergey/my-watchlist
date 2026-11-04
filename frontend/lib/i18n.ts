@@ -11,6 +11,15 @@ export function isLocale(value: unknown): value is Locale {
 
 const en = {
   "nav.title": "My Watchlist",
+  "nav.skip": "Skip to content",
+  "nav.sections": "Sections",
+  "nav.loading": "Loading…",
+  "home.heading": "My watchlist — movies, anime and serials",
+  "meta.description": "Movies, anime and serials I've watched, with my ratings and feedback",
+  "error.title": "Something went wrong.",
+  "error.retry": "Try again",
+  "notFound.title": "Page not found.",
+  "notFound.home": "Back to the list",
   "nav.admin": "Admin",
   "nav.language": "Language",
   "cat.all": "All",
@@ -92,6 +101,15 @@ const en = {
 
 const be: Record<keyof typeof en, string> = {
   "nav.title": "Мой спіс",
+  "nav.skip": "Да зместу",
+  "nav.sections": "Раздзелы",
+  "nav.loading": "Загрузка…",
+  "home.heading": "Мой спіс — фільмы, анімэ і серыялы",
+  "meta.description": "Фільмы, анімэ і серыялы, якія я паглядзеў, — з маімі адзнакамі і водгукамі",
+  "error.title": "Нешта пайшло не так.",
+  "error.retry": "Паўтарыць",
+  "notFound.title": "Старонка не знойдзена.",
+  "notFound.home": "Да спіса",
   "nav.admin": "Адмінка",
   "nav.language": "Мова",
   "cat.all": "Усе",

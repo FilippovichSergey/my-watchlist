@@ -16,7 +16,7 @@ export function ThemeToggle({ label }: { label: string }) {
       onClick={toggle}
       title={label}
       aria-label={label}
-      className="grid h-[34px] w-[34px] place-items-center rounded-lg border border-white/20 text-[15px] leading-none transition-colors duration-150 hover:bg-white/[.08] desk:h-8 desk:w-8"
+      className="hit-area-all focus-ring-dark grid h-[34px] w-[34px] place-items-center rounded-lg border border-white/20 text-[15px] leading-none transition-colors duration-150 hover:bg-white/[.08] desk:h-8 desk:w-8"
     >
       <span className="dark:hidden">🌙</span>
       <span className="hidden dark:inline">☀</span>

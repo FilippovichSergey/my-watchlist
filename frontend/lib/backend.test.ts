@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { encode } from "next-auth/jwt";
+import { revalidateTag } from "next/cache";
 import { proxyToBackend } from "./backend";
+
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
 
 // Route-level: a real Auth.js session cookie (encrypted with the same secret and salt the app uses),
 // a stubbed Spring backend, and the exact header sets browsers send.
@@ -72,6 +75,18 @@ describe("proxyToBackend", () => {
     const cookie = await sessionCookie({ sub: "1", idToken: "stale", expiresAt: now() - 10 });
     expect((await proxyToBackend(request("GET", { ...fromOurPage, cookie }), "/api/tmdb/search?q=dune")).status).toBe(401);
     expect(backend).not.toHaveBeenCalled();
+  });
+
+  it("drops the public cache after a successful write, not after a read", async () => {
+    const backend = stubBackend();
+    const cookie = await sessionCookie({ sub: "1", idToken: "id-token", expiresAt: now() + 3600 });
+    vi.mocked(revalidateTag).mockClear();
+    await proxyToBackend(request("GET", { ...fromOurPage, cookie }), "/api/entries");
+    expect(revalidateTag).not.toHaveBeenCalled();
+    const headers = { ...fromOurPage, cookie, "content-type": "application/json" };
+    await proxyToBackend(request("PATCH", headers, "{}"), "/api/entries/1", { method: "PATCH", forwardBody: true });
+    expect(backend).toHaveBeenCalledTimes(2);
+    expect(revalidateTag).toHaveBeenCalledWith("entries");
   });
 
   it("rejects a write from another origin despite a valid session", async () => {

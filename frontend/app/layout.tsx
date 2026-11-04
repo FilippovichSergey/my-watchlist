@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Jost, Oswald } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Providers } from "./providers";
+import { PendingBar, Providers } from "./providers";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { NavTabs } from "./NavTabs";
 import { ThemeToggle } from "./ThemeToggle";
@@ -14,10 +14,28 @@ import "./globals.css";
 const jost = Jost({ subsets: ["latin", "cyrillic"], variable: "--font-sans", display: "swap" });
 const oswald = Oswald({ subsets: ["latin", "cyrillic"], variable: "--font-display", display: "swap" });
 
-export const metadata: Metadata = {
-  title: "My Watchlist",
-  description: "Movies, anime, and serials I've watched",
-};
+const SITE_ORIGIN = process.env.APP_ORIGIN ?? "https://my-watchlist-sf.vercel.app";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const description = t(locale, "meta.description");
+  return {
+    metadataBase: new URL(SITE_ORIGIN),
+    title: { default: "My Watchlist", template: "%s — My Watchlist" },
+    description,
+    openGraph: {
+      siteName: t(locale, "nav.title"),
+      title: t(locale, "nav.title"),
+      description,
+      type: "website",
+      locale: locale === "be" ? "be_BY" : "en_US",
+    },
+    twitter: { card: "summary" },
+  };
+}
+
+// viewport-fit lets the bottom sheet pad itself above the iPhone home indicator; the bar colour matches the header
+export const viewport: Viewport = { viewportFit: "cover", themeColor: "#1a1a1a" };
 
 /** Applies the chosen theme (or the system one) before the first paint, so the page never flashes the other colours. */
 const THEME_SCRIPT =
@@ -34,11 +52,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <Providers locale={locale}>
+          <a
+            href="#content"
+            className="focus-ring sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-30 focus:rounded-lg focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink focus:shadow-strong"
+          >
+            {t(locale, "nav.skip")}
+          </a>
+          <PendingBar label={t(locale, "nav.loading")} />
           <header className="sticky top-0 z-10 bg-header text-white shadow-[0_1px_0_rgba(255,255,255,.06)]">
             <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-7 px-[18px] desk:h-[60px] desk:px-6">
               <Link
                 href="/"
-                className="flex h-11 items-center whitespace-nowrap font-display text-[22px] font-bold uppercase tracking-[0.3px] desk:h-auto"
+                className="focus-ring-dark flex h-11 items-center whitespace-nowrap rounded font-display text-[22px] font-bold uppercase tracking-[0.3px] desk:h-auto"
               >
                 {brand}&nbsp;<span className="text-accent">{rest.join(" ")}</span>
               </Link>
@@ -50,14 +75,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <ThemeToggle label={t(locale, "nav.theme")} />
                 <Link
                   href="/admin"
-                  className="hidden text-[13px] font-semibold text-white/55 transition-colors duration-150 hover:text-white desk:inline"
+                  className="focus-ring-dark hidden rounded text-[13px] font-semibold text-white/55 transition-colors duration-150 hover:text-white desk:inline"
                 >
                   {t(locale, "nav.admin")}
                 </Link>
               </div>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[1180px] px-4 pb-12 pt-4 desk:px-6 desk:pb-16 desk:pt-7">{children}</main>
+          <main
+            id="content"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-[1180px] px-4 pb-12 pt-4 outline-none desk:px-6 desk:pb-16 desk:pt-7"
+          >
+            {children}
+          </main>
         </Providers>
       </body>
     </html>

@@ -54,9 +54,26 @@
   .label-caps {
     @apply text-[10px] font-bold uppercase tracking-[0.9px] text-muted;
   }
-  /* Filter select / text field */
+  /* Filter select / text field: 44px tall where it is touched (the sheet), compact in the sidebar */
   .control {
-    @apply w-full rounded-lg border border-line bg-card px-[10px] py-[5px] text-[13px] text-ink outline-none transition-colors duration-150 focus:border-accent;
+    @apply min-h-11 w-full rounded-lg border border-line bg-card px-[10px] py-[5px] text-[13px] text-ink outline-none transition-colors duration-150 focus:border-accent focus-visible:ring-2 focus-visible:ring-accent desk:min-h-0;
+  }
+  /* Keyboard focus: an accent ring, offset in the colour of the surface it sits on */
+  .focus-ring {
+    @apply rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-page;
+  }
+  .focus-ring-dark {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-header;
+  }
+  /* Enlarge the touch area of a small control to about 44px without changing how it looks */
+  .hit-area {
+    @apply relative before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''];
+  }
+  .hit-area-lg {
+    @apply relative before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[''];
+  }
+  .hit-area-all {
+    @apply relative before:absolute before:-inset-[5px] before:content-[''];
   }
   /* Big display numeral (Oswald) */
   .numeral {
@@ -70,4 +87,15 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* People who asked for less motion get instant state changes instead of transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

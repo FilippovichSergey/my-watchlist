@@ -21,13 +21,15 @@ export function NavTabs() {
   const active = pathname === "/" ? values.category || "ALL" : null;
   return (
     <nav
+      aria-label={t("nav.sections")}
       className="no-scrollbar order-last -mx-[18px] flex basis-full gap-1 overflow-x-auto px-[18px] pb-3 pt-2 desk:order-none desk:mx-0 desk:basis-auto desk:overflow-visible desk:p-0"
     >
       {TABS.map(([value, key]) => (
         <Link
           key={value}
           href={queryWith(values, { category: value })}
-          className={`whitespace-nowrap rounded-lg px-[18px] py-[6px] text-sm font-semibold tracking-[0.1px] transition-all duration-150 ${
+          aria-current={active === value ? "page" : undefined}
+          className={`hit-area focus-ring-dark inline-flex items-center whitespace-nowrap rounded-lg px-[18px] py-[6px] text-sm font-semibold tracking-[0.1px] transition-all duration-150 ${
             active === value ? "bg-accent text-white" : "text-white/55 hover:bg-white/[.08] hover:text-white"
           }`}
         >

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { revalidateTag } from "next/cache";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -13,9 +14,17 @@ import type { Entry } from "./types";
 // Server-only: the browser never talks to the Spring backend directly.
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8080";
 
+/**
+ * Public pages are served from Next's data cache: visitors get an instant answer, a sleeping or
+ * briefly failing backend goes unnoticed (the last good copy is kept), and every admin write
+ * drops the cache through this tag, so the owner's changes show up at once.
+ */
+export const ENTRIES_TAG = "entries";
+const PUBLIC_CACHE: RequestInit = { next: { revalidate: 300, tags: [ENTRIES_TAG] } };
+
 /** One public entry for its page; null when it does not exist. Cached per request so metadata and page share it. */
 export const fetchPublicEntry = cache(async (id: number): Promise<Entry | null> => {
-  const res = await fetch(`${BACKEND_URL}/api/entries/${id}`, { cache: "no-store" });
+  const res = await fetch(`${BACKEND_URL}/api/entries/${id}`, PUBLIC_CACHE);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Backend responded ${res.status}`);
   return res.json();
@@ -23,7 +32,7 @@ export const fetchPublicEntry = cache(async (id: number): Promise<Entry | null> 
 
 /** Public list for the home page (rendered on the server, no credentials). */
 export async function fetchPublicEntries(): Promise<Entry[]> {
-  const res = await fetch(`${BACKEND_URL}/api/entries`, { cache: "no-store" });
+  const res = await fetch(`${BACKEND_URL}/api/entries`, PUBLIC_CACHE);
   if (!res.ok) throw new Error(`Backend responded ${res.status}`);
   return res.json();
 }
@@ -81,6 +90,9 @@ export async function proxyToBackend(
     body,
     cache: "no-store",
   });
+  if (init.method !== "GET" && res.ok) {
+    revalidateTag(ENTRIES_TAG);
+  }
   // A Response may not carry a body for these statuses
   const responseBody = [204, 205, 304].includes(res.status) ? null : await res.text();
   return new NextResponse(responseBody, {

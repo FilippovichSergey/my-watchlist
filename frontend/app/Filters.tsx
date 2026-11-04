@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { useT } from "./providers";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useNavigation, useT } from "./providers";
 import { CalendarIcon, ClapperboardIcon, FilterIcon, GlobeIcon, HeartIcon, SearchIcon, StarIcon, UserIcon } from "./icons";
 import {
   EMPTY_FILTERS,
@@ -18,11 +17,12 @@ const RATINGS = [9, 8, 7, 6, 5];
 export type { FilterOptions, FilterValues };
 
 /** Every change is a navigation: the filters live in the URL and the page re-renders on the server. */
-function useNavigate(values: FilterValues) {
-  const router = useRouter();
+function useFilterNavigation(values: FilterValues) {
+  const { navigate, pending } = useNavigation();
   return {
-    go: (patch: Partial<FilterValues>) => router.push(queryWith(values, patch)),
-    reset: () => router.push(queryWith({ ...EMPTY_FILTERS, category: values.category })),
+    pending,
+    go: (patch: Partial<FilterValues>) => navigate(queryWith(values, patch)),
+    reset: () => navigate(queryWith({ ...EMPTY_FILTERS, category: values.category })),
   };
 }
 
@@ -32,7 +32,7 @@ function ResetButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg px-3 py-[5px] text-xs font-semibold tracking-[0.1px] text-muted transition-colors duration-150 hover:text-accent"
+      className="hit-area-lg focus-ring rounded-lg px-3 py-[5px] text-xs font-semibold tracking-[0.1px] text-muted transition-colors duration-150 hover:text-accent"
     >
       {t("filter.reset")}
     </button>
@@ -54,7 +54,7 @@ function Field({ icon, label, className = "", children }: { icon: ReactNode; lab
 /** The six narrowing controls. In the bottom sheet (`sheet`) they sit in a two-column grid. */
 function FilterFields({ values, options, sheet = false }: { values: FilterValues; options: FilterOptions; sheet?: boolean }) {
   const t = useT();
-  const { go } = useNavigate(values);
+  const { go } = useFilterNavigation(values);
   const [actor, setActor] = useState(values.actor);
   // Reset (and back/forward navigation) change the URL without touching this field
   useEffect(() => setActor(values.actor), [values.actor]);
@@ -113,9 +113,9 @@ function FilterFields({ values, options, sheet = false }: { values: FilterValues
 /** Desktop: the sticky sidebar card. */
 export function FilterPanel({ values, options }: { values: FilterValues; options: FilterOptions }) {
   const t = useT();
-  const { reset } = useNavigate(values);
+  const { reset, pending } = useFilterNavigation(values);
   return (
-    <div className="card flex flex-col gap-[18px] px-5 pb-4 pt-5">
+    <div className="card flex flex-col gap-[18px] px-5 pb-4 pt-5" aria-busy={pending}>
       <div className="flex items-center justify-between">
         <span className="font-display text-base font-semibold uppercase tracking-[0.8px]">{t("home.filters")}</span>
         {hasActiveFilters(values) && <ResetButton onClick={reset} />}
@@ -128,7 +128,7 @@ export function FilterPanel({ values, options }: { values: FilterValues; options
 /** Title search; applied on Enter or when the field loses focus. */
 export function SearchBar({ values }: { values: FilterValues }) {
   const t = useT();
-  const { go } = useNavigate(values);
+  const { go } = useFilterNavigation(values);
   const [q, setQ] = useState(values.q);
   useEffect(() => setQ(values.q), [values.q]);
   const commit = () => q.trim() !== values.q && go({ q: q.trim() });
@@ -143,36 +143,61 @@ export function SearchBar({ values }: { values: FilterValues }) {
         onKeyDown={(e) => e.key === "Enter" && commit()}
         placeholder={t("home.search")}
         aria-label={t("home.search")}
-        className="h-11 w-full rounded-xl border border-line bg-card pl-10 pr-[14px] text-[15px] text-ink outline-none transition-colors duration-150 placeholder:text-muted focus:border-accent desk:h-auto desk:py-[10px] desk:text-sm"
+        className="h-11 w-full rounded-xl border border-line bg-card pl-10 pr-[14px] text-[15px] text-ink outline-none transition-colors duration-150 placeholder:text-muted focus:border-accent focus-visible:ring-2 focus-visible:ring-accent desk:h-auto desk:py-[10px] desk:text-sm"
       />
     </div>
   );
 }
 
+const FOCUSABLE = "select, input, button, a[href]";
+
 /** Narrow screens: the "Filters" button with a count badge, opening a bottom sheet with the same controls. */
 export function FilterSheet({ values, options, count }: { values: FilterValues; options: FilterOptions; count: number }) {
   const t = useT();
-  const { reset } = useNavigate(values);
+  const { reset } = useFilterNavigation(values);
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const active = activeFilterCount(values);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Focus moves into the sheet (its first field, not the Reset button) and comes back to the button that opened it
+    panel.current?.querySelector<HTMLElement>("select, input")?.focus();
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      trigger.current?.focus();
     };
   }, [open]);
+
+  /** Tab stays inside the sheet while it is open. */
+  function trapTab(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab" || !panel.current) return;
+    const focusable = Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last?.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first?.focus();
+    }
+  }
 
   return (
     <>
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex h-11 items-center gap-[7px] rounded-xl border bg-card px-[14px] text-[13px] font-semibold transition-colors duration-150 ${
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={`focus-ring flex h-11 items-center gap-[7px] rounded-xl border bg-card px-[14px] text-[13px] font-semibold transition-colors duration-150 ${
           active > 0 ? "border-accent text-accent" : "border-line text-ink"
         }`}
       >
@@ -187,7 +212,11 @@ export function FilterSheet({ values, options, count }: { values: FilterValues; 
       {open && (
         <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={t("home.filters")}>
           <div className="absolute inset-0 bg-black/45" onClick={() => setOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[90vh] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card px-5 pb-11 pt-[10px] text-ink shadow-strong">
+          <div
+            ref={panel}
+            onKeyDown={trapTab}
+            className="absolute inset-x-0 bottom-0 flex max-h-[90vh] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card px-5 pb-[calc(2.75rem+env(safe-area-inset-bottom))] pt-[10px] text-ink shadow-strong"
+          >
             <div className="mx-auto h-1 w-10 rounded-sm bg-line" />
             <div className="flex items-center justify-between">
               <span className="font-display text-[17px] font-semibold uppercase tracking-[0.8px]">{t("home.filters")}</span>
@@ -199,7 +228,7 @@ export function FilterSheet({ values, options, count }: { values: FilterValues; 
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="w-full rounded-lg bg-accent px-[22px] py-[9px] text-[15px] font-semibold tracking-[0.1px] text-white transition-colors duration-150 hover:bg-accent-ink"
+              className="focus-ring w-full rounded-lg bg-accent px-[22px] py-[9px] text-[15px] font-semibold tracking-[0.1px] text-white transition-colors duration-150 hover:bg-accent-ink"
             >
               {t("home.show", { n: count })}
             </button>

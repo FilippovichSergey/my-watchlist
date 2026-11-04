@@ -6,6 +6,7 @@ import { t, type Locale } from "@/lib/i18n";
 import { categoryName, countryName, displayTitle, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
 import { FilterPanel, FilterSheet, SearchBar } from "./Filters";
+import { RememberListUrl } from "./RememberListUrl";
 import { filtersFrom, hasActiveFilters, type FilterOptions } from "@/lib/filters";
 import { byMyRatingDesc } from "@/lib/sort";
 
@@ -90,7 +91,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
   return (
     <div className="flex flex-col gap-[14px] desk:grid desk:grid-cols-[250px_minmax(0,1fr)] desk:items-start desk:gap-6">
-      <aside className="hidden desk:sticky desk:top-[84px] desk:block">
+      <h1 className="sr-only">{t(locale, "home.heading")}</h1>
+      <RememberListUrl />
+      <aside aria-label={t(locale, "home.filters")} className="hidden desk:sticky desk:top-[84px] desk:block">
         <FilterPanel values={values} options={options} />
       </aside>
 
@@ -117,8 +120,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <p className="my-12 text-center text-sm text-muted">{message}</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-4">
-            {shown.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} locale={locale} />
+            {shown.map((entry, index) => (
+              <EntryCard key={entry.id} entry={entry} locale={locale} eager={index < 6} />
             ))}
           </div>
         )}
@@ -146,7 +149,8 @@ function Found({ n, locale, showReset, className }: { n: number; locale: Locale;
   );
 }
 
-function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
+/** `eager` marks the posters above the fold, which the browser then loads before anything else. */
+function EntryCard({ entry, locale, eager }: { entry: Entry; locale: Locale; eager: boolean }) {
   const title = displayTitle(entry, locale);
   const facts = [
     entry.releaseYear,
@@ -158,7 +162,7 @@ function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
   return (
     <Link
       href={`/title/${entry.id}`}
-      className="card group grid min-h-[144px] grid-cols-[96px_minmax(0,1fr)] overflow-hidden desk:min-h-[156px] desk:grid-cols-[104px_minmax(0,1fr)]"
+      className="card focus-ring group grid min-h-[144px] grid-cols-[96px_minmax(0,1fr)] overflow-hidden desk:min-h-[156px] desk:grid-cols-[104px_minmax(0,1fr)]"
     >
       <div className="relative overflow-hidden bg-subtle">
         {entry.posterUrl && (
@@ -166,7 +170,8 @@ function EntryCard({ entry, locale }: { entry: Entry; locale: Locale }) {
             src={entry.posterUrl}
             alt={title}
             fill
-            className="object-cover transition-transform duration-200 group-hover:scale-105"
+            priority={eager}
+            className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:group-hover:scale-100"
             sizes="104px"
           />
         )}

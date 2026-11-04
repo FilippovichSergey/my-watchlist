@@ -42,3 +42,8 @@ tmdb:
   image-base-url: https://image.tmdb.org/t/p/w500
   # Per-admin budget shared by searches and the lookup done on every create. Counted in this JVM only.
   rate-limit-per-minute: 30
+
+# Self-ping that keeps a free hosting instance awake; Render sets RENDER_EXTERNAL_URL itself.
+# Unset (the default outside Render) means no job at all.
+keepalive:
+  url: ${KEEPALIVE_URL:${RENDER_EXTERNAL_URL:}}
