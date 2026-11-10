@@ -5175,5 +5175,33 @@
     "titleBe": "Лекар Х: мафія ў белым",
     "overviewBe": "У бальніцу, дзе пануюць эгаізм і карупцыя, прыбывае загадкавы, але бліскучы хірург, які бярэцца за, здавалася б, немагчымыя выпадкі, сутыкаючыся з жорсткай апазіцыяй.",
     "createdAt": "2026-11-04T02:53:52.377735Z"
+  },
+  {
+    "id": 180,
+    "tmdbId": 311648,
+    "mediaType": "TV",
+    "title": "Make Me Tingle",
+    "originalTitle": "내가 떨릴 수 있게",
+    "category": "SERIAL",
+    "releaseYear": 2026,
+    "countries": [
+      "KR"
+    ],
+    "genreIds": [
+      18,
+      35
+    ],
+    "cast": [
+      "Nam Ji-hyun",
+      "Kim Jae-young"
+    ],
+    "overview": "A marketer with traditional views on love and marriage tries to navigate a connection with an adult toy company CEO with different values.",
+    "posterUrl": "https://image.tmdb.org/t/p/w500/e4MlbtE02So4D5DJy197DbiAxqs.jpg",
+    "tmdbRating": 8.6,
+    "myRating": 9,
+    "review": null,
+    "titleBe": "Прымусь мяне трымцець",
+    "overviewBe": "Маркетолаг з традыцыйнымі поглядамі на каханне і шлюб спрабуе разабрацца ў стасунках з кіраўніком кампаніі цацак для дарослых, у якога зусім іншыя каштоўнасці.",
+    "createdAt": "2026-11-10T01:01:09.382907Z"
   }
 ]
