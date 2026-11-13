@@ -81,6 +81,10 @@ Schema changes go into new `V2__...`, `V3__...` files; a migration that has run 
 
 Corrections to seeded data update the existing row in place (`UPDATE ... WHERE media_type = ... AND tmdb_id = ...`), so the row keeps its `id`, its position in the list and whatever the owner has added to it — category, rating, feedback. Replacing a row is a last resort and must then copy those fields and the `id` explicitly. `V4` predates this rule and replaced its row; before it ran anywhere the owner fields of that row were empty (checked on 2026-10-01 against production), and like any applied migration it stays as it is.
 
+### Versions
+
+`VERSION` holds the version of the whole project (backend and frontend together) and `CHANGELOG.md` its history from 1.0.0 on. A change that answers a code review raises the version and gets a changelog entry naming the review; the reviews themselves are local notes in `review/` and stay out of the repository.
+
 ## Seed data
 
 `V2__import_watchlist.sql` and `V3__import_watchlist_leftovers.sql` carry the owner's initial list, and `V4__fix_my_youth.sql` replaces one mismatched row — it deletes the wrong title and inserts the right one at the same position, which is why the correction rule below now asks for an in-place `UPDATE` instead (162 titles resolved against TMDB on 2026-10-01: TMDB id, media type, category, English title, poster path, rating). They run like any migration, so a fresh database — local, CI or production — starts with the same list; rows that already exist are left alone (`ON CONFLICT DO NOTHING`). Later additions go through the admin page, not through migrations.
