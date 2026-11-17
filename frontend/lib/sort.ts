@@ -22,7 +22,8 @@ export function sortEntries<T extends Sortable>(entries: T[], sort: SortKey, loc
   const list = [...entries];
   switch (sort) {
     case "newest":
-      return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      // By time, not by text: ISO dates differ in fraction length and offset
+      return list.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     case "year":
       return list.sort((a, b) => (b.releaseYear ?? -1) - (a.releaseYear ?? -1));
     case "title":

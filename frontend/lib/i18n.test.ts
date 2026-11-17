@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
 import { categoryName, countryName, displayOverview, displayTitle, genreName } from "./catalog";
-import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, latestValues, parseRatingRange, queryWith } from "./filters";
+import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, latestValues, nextRating, parseRatingRange, queryWith } from "./filters";
 
 describe("i18n", () => {
   it("recognises the supported UI languages only", () => {
@@ -81,5 +81,20 @@ describe("filter URLs", () => {
     expect(new URLSearchParams(second.split("?")[1]).get("my")).toBe("8");
     expect(latestValues({ ...EMPTY_FILTERS, year: "2024" }, null).year).toBe("2024");
     expect(latestValues({ ...EMPTY_FILTERS, year: "2024" }, "/")).toEqual(EMPTY_FILTERS);
+  });
+
+  it("builds quick second clicks on the first: a range from two scores, a category that keeps the search", () => {
+    expect(nextRating("", 7)).toBe("7");
+    expect(nextRating("7", 9)).toBe("7-9");
+    expect(nextRating("7", 7)).toBe("");
+    expect(nextRating("7-9", 8)).toBe("8");
+    // Score 7, then 9 before the server answered: the page still says "no rating"
+    const first = queryWith(EMPTY_FILTERS, { my: nextRating(latestValues(EMPTY_FILTERS, null).my, 7) });
+    expect(nextRating(latestValues(EMPTY_FILTERS, first).my, 9)).toBe("7-9");
+    // Search on blur, then a category tab
+    const search = queryWith(EMPTY_FILTERS, { q: "test" });
+    const tab = queryWith(latestValues(EMPTY_FILTERS, search), { category: "ANIME" });
+    expect(new URLSearchParams(tab.split("?")[1]).get("q")).toBe("test");
+    expect(new URLSearchParams(tab.split("?")[1]).get("category")).toBe("ANIME");
   });
 });

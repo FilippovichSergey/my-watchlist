@@ -4,6 +4,19 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.3] - 2026-11-18
+
+Addresses `review/review_2026-11-18_v1.0.2.md`.
+
+### Fixed
+- **[P2] finding #1** — the add form stayed editable while the new entry was being saved and was cleared on success, so feedback typed meanwhile was lost. The form, the search field and the result list are locked until the answer arrives.
+- **[P2] finding #2** — "Newest first" compared the creation dates as text, which misorders dates with a different fraction length or time-zone offset. They are compared as times.
+- **Rest of finding #1 of the 1.0.1 review** — the category tabs and a quick second click on a score still built on the last finished view. Both now build on the navigation in flight: a search followed at once by a tab keeps the search, and two quick scores make a range.
+- The README named the old 16 KiB body limit; it says 64 KiB now.
+
+### Added
+- Frontend tests for date order and for quick successive changes (53 in all).
+
 ## [1.0.2] - 2026-11-18
 
 Addresses `review/review_2026-11-18_v1.0.1.md`.

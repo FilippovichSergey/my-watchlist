@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useT } from "./providers";
-import { filtersFrom, queryWith } from "@/lib/filters";
+import { useNavigation, useT } from "./providers";
+import { filtersFrom, latestValues, queryWith } from "@/lib/filters";
 
 const TABS = [
   ["ALL", "cat.all"],
@@ -19,6 +19,7 @@ export function NavTabs() {
   const params = useSearchParams();
   const values = filtersFrom((key) => params.get(key));
   const active = pathname === "/" ? values.category || "ALL" : null;
+  const { navigate, pendingHref } = useNavigation();
   return (
     <nav
       aria-label={t("nav.sections")}
@@ -28,6 +29,14 @@ export function NavTabs() {
         <Link
           key={value}
           href={queryWith(values, { category: value })}
+          onClick={(e) => {
+            // The href shows the last finished view; a filter change still in flight must not be dropped.
+            // Modified clicks (new tab) and other pages keep the plain link.
+            const pending = pendingHref();
+            if (pathname !== "/" || pending === null || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            navigate(queryWith(latestValues(values, pending), { category: value }));
+          }}
           aria-current={active === value ? "page" : undefined}
           className={`hit-area focus-ring-dark inline-flex items-center whitespace-nowrap rounded-lg px-[18px] py-[6px] text-sm font-semibold tracking-[0.1px] transition-all duration-150 ${
             active === value ? "bg-accent text-white" : "text-white/55 hover:bg-white/[.08] hover:text-white"

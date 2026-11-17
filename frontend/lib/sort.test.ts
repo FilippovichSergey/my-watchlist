@@ -27,4 +27,13 @@ describe("default list order", () => {
     expect(ids("nonsense")).toEqual([2, 1, 3]);
     expect(sortEntries(list, "title", "en", (e) => (e.id === 1 ? "Zed" : e.title)).map((e) => e.id)).toEqual([2, 3, 1]);
   });
+
+  it("orders newest first by time, whatever the spelling of the date", () => {
+    const at = (id: number, createdAt: string) => ({ id, title: "T", myRating: null, createdAt, releaseYear: null, tmdbRating: null });
+    const ids = (list: ReturnType<typeof at>[]) => sortEntries(list, "newest", "en").map((e) => e.id);
+    // .123 is later than .12, though it sorts first as text
+    expect(ids([at(2, "2026-11-18T10:00:00.12Z"), at(1, "2026-11-18T10:00:00.123Z")])).toEqual([1, 2]);
+    // 12:00+03:00 is 09:00Z, earlier than 10:00Z
+    expect(ids([at(1, "2026-11-18T12:00:00+03:00"), at(2, "2026-11-18T10:00:00Z")])).toEqual([2, 1]);
+  });
 });

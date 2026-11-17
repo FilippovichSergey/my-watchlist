@@ -19,6 +19,7 @@ import {
   formatRatingRange,
   hasActiveFilters,
   latestValues,
+  nextRating,
   parseRatingRange,
   queryWith,
   type FilterOptions,
@@ -46,6 +47,7 @@ function useFilterNavigation(values: FilterValues) {
   const latest = () => latestValues(values, pendingHref());
   return {
     pending,
+    latest,
     go: (patch: Partial<FilterValues>) => navigate(queryWith(latest(), patch)),
     reset: () => {
       const { category, sort } = latest();
@@ -84,16 +86,20 @@ function Field({ icon, label, className = "", children }: { icon: ReactNode; lab
  * between the two; clicking the only picked score clears it. The value travels as "8" or "7-9", so
  * nothing here needs state of its own: the next click is read off the current value.
  */
-function RatingRangePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function RatingRangePicker({
+  value,
+  latest,
+  onChange,
+}: {
+  value: string;
+  /** The value including a change still on its way: a quick second click must build on the first. */
+  latest: () => string;
+  onChange: (value: string) => void;
+}) {
   const t = useT();
   const range = parseRatingRange(value);
   const single = range !== null && range.min === range.max ? range.min : null;
-
-  function pick(score: number) {
-    if (single === score) onChange("");
-    else if (single !== null) onChange(formatRatingRange(Math.min(single, score), Math.max(single, score)));
-    else onChange(String(score));
-  }
+  const pick = (score: number) => onChange(nextRating(latest(), score));
   const picked = (score: number) => range !== null && score >= range.min && score <= range.max;
   const hint =
     range === null ? t("filter.myRatingHint") : single !== null ? t("filter.rangeHint", { n: single }) : `${range.min}–${range.max}`;
@@ -167,7 +173,7 @@ export function SortSelect({ values, sheet = false }: { values: FilterValues; sh
 /** The six narrowing controls. In the bottom sheet (`sheet`) they sit in a two-column grid. */
 function FilterFields({ values, options, sheet = false }: { values: FilterValues; options: FilterOptions; sheet?: boolean }) {
   const t = useT();
-  const { go } = useFilterNavigation(values);
+  const { go, latest } = useFilterNavigation(values);
   const [actor, setActor] = useState(values.actor);
   // Reset (and back/forward navigation) change the URL without touching this field
   useEffect(() => setActor(values.actor), [values.actor]);
@@ -220,7 +226,7 @@ function FilterFields({ values, options, sheet = false }: { values: FilterValues
           </span>
           {t("filter.myRating")}
         </span>
-        <RatingRangePicker value={values.my} onChange={(my) => go({ my })} />
+        <RatingRangePicker value={values.my} latest={() => latest().my} onChange={(my) => go({ my })} />
       </div>
     </>
   );

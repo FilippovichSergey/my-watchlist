@@ -32,6 +32,8 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
   }
 
   function handleSelect(result: TmdbTitle) {
+    // What was sent is what gets saved; nothing may change under a request in flight
+    if (saving) return;
     setSelected(result);
     // Sensible default; anime has to be picked by hand
     setCategory(result.mediaType === "MOVIE" ? "MOVIE" : "SERIAL");
@@ -63,13 +65,14 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
           placeholder={t("admin.searchPlaceholder")}
           value={query}
           maxLength={100}
+          disabled={saving}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-transparent"
         />
         <button
           onClick={handleSearch}
-          disabled={searching}
+          disabled={searching || saving}
           className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm rounded-lg hover:opacity-80 disabled:opacity-50"
         >
           {searching ? "..." : t("admin.search")}
@@ -79,7 +82,8 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
       <SearchResults results={results} selectedKey={selected ? titleKey(selected) : null} onSelect={handleSelect} />
 
       {selected && (
-        <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+        // Disabled as a whole while saving: the form is cleared on success, so text typed meanwhile would be lost
+        <fieldset disabled={saving} className="flex min-w-0 flex-col gap-3 border-t border-gray-100 pt-4 disabled:opacity-60 dark:border-gray-800">
           <p className="text-sm font-medium">
             {t("admin.selected")}: <span className="text-blue-600">{selected.title}</span>
           </p>
@@ -105,7 +109,7 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
           >
             {saving ? t("admin.saving") : t("admin.add")}
           </button>
-        </div>
+        </fieldset>
       )}
     </section>
   );
