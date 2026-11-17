@@ -4,6 +4,18 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.4] - 2026-11-18
+
+Addresses `review/review_2026-11-18_v1.0.3.md`.
+
+### Fixed
+- **[P2] finding #1** — the editor of an existing entry stayed editable while its changes were being saved and closed on success, so text typed meanwhile was lost. Its fields are locked until the answer arrives, as in the add form.
+- **[P2] finding #2** — a second TMDB search could start by Enter while the first was still running, and the answer that came last replaced the results, even when it belonged to the older query. One search runs at a time, and only the newest search may show its answer.
+- **Rest of finding #1 of the 1.0.1 review** — a category tab followed at once by another filter lost the category: the tab was a plain link outside the shared navigation. On the list a tab is now one more filter change.
+
+### Added
+- Frontend tests for the newest-answer rule and for a tab followed by a score (55 in all).
+
 ## [1.0.3] - 2026-11-18
 
 Addresses `review/review_2026-11-18_v1.0.2.md`.

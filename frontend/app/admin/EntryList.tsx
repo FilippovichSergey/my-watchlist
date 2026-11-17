@@ -106,7 +106,9 @@ function EntryRow({
           {entry.releaseYear && <span className="text-gray-500 font-normal"> ({entry.releaseYear})</span>}
         </p>
         {editing ? (
-          <div className="flex flex-col gap-2 mt-1">
+          // Disabled as a whole while saving: the request carries the text as it was at the click, and the
+          // editor closes on success, so anything typed meanwhile would be lost without a word
+          <fieldset disabled={busy} className="mt-1 flex min-w-0 flex-col gap-2 disabled:opacity-60">
             <div className="flex flex-wrap items-center gap-4">
               <CategoryPicker value={category} onChange={setCategory} />
               <RatingSelect value={myRating} onChange={setMyRating} />
@@ -144,7 +146,7 @@ function EntryRow({
                 {t("admin.cancel")}
               </button>
             </div>
-          </div>
+          </fieldset>
         ) : (
           <>
             <p className={`text-xs ${entry.titleBe ? "text-gray-600 dark:text-gray-400" : "italic text-gray-400"}`}>

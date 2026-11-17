@@ -30,12 +30,12 @@ export function NavTabs() {
           key={value}
           href={queryWith(values, { category: value })}
           onClick={(e) => {
-            // The href shows the last finished view; a filter change still in flight must not be dropped.
-            // Modified clicks (new tab) and other pages keep the plain link.
-            const pending = pendingHref();
-            if (pathname !== "/" || pending === null || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            // On the list a tab is one more filter change: it goes through the shared navigation, so that it
+            // is built on a change still in flight and the next change is built on it. The href shows the
+            // last finished view only. Modified clicks (new tab) and other pages keep the plain link.
+            if (pathname !== "/" || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
-            navigate(queryWith(latestValues(values, pending), { category: value }));
+            navigate(queryWith(latestValues(values, pendingHref()), { category: value }));
           }}
           aria-current={active === value ? "page" : undefined}
           className={`hit-area focus-ring-dark inline-flex items-center whitespace-nowrap rounded-lg px-[18px] py-[6px] text-sm font-semibold tracking-[0.1px] transition-all duration-150 ${

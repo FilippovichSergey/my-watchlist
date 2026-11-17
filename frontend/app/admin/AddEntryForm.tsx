@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useT } from "../providers";
 import { createEntry, searchTmdb } from "@/lib/api";
+import { latestOnly } from "@/lib/latest";
 import { titleKey, type Category, type Entry, type TmdbTitle } from "@/lib/types";
 import { SearchResults } from "./SearchResults";
 import { CategoryPicker, RatingSelect } from "./RatingSelect";
@@ -18,16 +19,22 @@ export function AddEntryForm({ onAdded, onError }: { onAdded: (entry: Entry) => 
   const [review, setReview] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const searches = useRef(latestOnly()).current;
+
   async function handleSearch() {
     const q = query.trim();
-    if (!q) return;
+    // One search at a time (Enter does not go through the disabled button, and every search costs TMDB budget)
+    if (!q || searching) return;
+    const ticket = searches.next();
     setSearching(true);
     try {
-      setResults(await searchTmdb(q));
+      const found = await searchTmdb(q);
+      // A late answer never replaces the results of a newer search
+      if (searches.isCurrent(ticket)) setResults(found);
     } catch (err) {
-      onError(err);
+      if (searches.isCurrent(ticket)) onError(err);
     } finally {
-      setSearching(false);
+      if (searches.isCurrent(ticket)) setSearching(false);
     }
   }
 

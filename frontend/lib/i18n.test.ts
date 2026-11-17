@@ -97,4 +97,12 @@ describe("filter URLs", () => {
     expect(new URLSearchParams(tab.split("?")[1]).get("q")).toBe("test");
     expect(new URLSearchParams(tab.split("?")[1]).get("category")).toBe("ANIME");
   });
+
+  it("keeps a category picked a moment ago when a score follows before the server answered", () => {
+    const tab = queryWith(latestValues(EMPTY_FILTERS, null), { category: "ANIME" });
+    const score = queryWith(latestValues(EMPTY_FILTERS, tab), { my: nextRating(latestValues(EMPTY_FILTERS, tab).my, 8) });
+    const params = new URLSearchParams(score.split("?")[1]);
+    expect(params.get("category")).toBe("ANIME");
+    expect(params.get("my")).toBe("8");
+  });
 });
