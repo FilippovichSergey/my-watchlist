@@ -97,4 +97,20 @@ describe("proxyToBackend", () => {
     expect(res.status).toBe(403);
     expect(backend).not.toHaveBeenCalled();
   });
+
+  it("forwards an edit whose every field is full of multi-byte text, and still refuses an oversized one", async () => {
+    const backend = stubBackend();
+    const cookie = await sessionCookie({ sub: "1", idToken: "id-token", expiresAt: now() + 3600 });
+    const headers = { ...fromOurPage, cookie, "content-type": "application/json" };
+    const wide = String.fromCodePoint(0x6f22); // one UTF-16 unit, three bytes in UTF-8: the costliest per unit of maxLength
+    const full = JSON.stringify({ category: "MOVIE", myRating: 8, review: wide.repeat(2000), titleBe: wide.repeat(255), overviewBe: wide.repeat(4000) });
+    expect(new TextEncoder().encode(full).length).toBeGreaterThan(16 * 1024);
+    const ok = await proxyToBackend(request("PATCH", headers, full), "/api/entries/1", { method: "PATCH", forwardBody: true });
+    expect(ok.status).toBe(200);
+    expect(backend).toHaveBeenCalledTimes(1);
+    const huge = JSON.stringify({ review: "x".repeat(70 * 1024) });
+    const refused = await proxyToBackend(request("PATCH", headers, huge), "/api/entries/1", { method: "PATCH", forwardBody: true });
+    expect(refused.status).toBe(413);
+    expect(backend).toHaveBeenCalledTimes(1);
+  });
 });

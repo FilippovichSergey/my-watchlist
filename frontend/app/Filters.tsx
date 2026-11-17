@@ -18,6 +18,7 @@ import {
   activeFilterCount,
   formatRatingRange,
   hasActiveFilters,
+  latestValues,
   parseRatingRange,
   queryWith,
   type FilterOptions,
@@ -40,11 +41,16 @@ export type { FilterOptions, FilterValues };
 
 /** Every change is a navigation: the filters live in the URL and the page re-renders on the server. */
 function useFilterNavigation(values: FilterValues) {
-  const { navigate, pending } = useNavigation();
+  const { navigate, pending, pendingHref } = useNavigation();
+  // Built on the change still in flight, if any: `values` only catch up when the server has answered
+  const latest = () => latestValues(values, pendingHref());
   return {
     pending,
-    go: (patch: Partial<FilterValues>) => navigate(queryWith(values, patch)),
-    reset: () => navigate(queryWith({ ...EMPTY_FILTERS, category: values.category, sort: values.sort })),
+    go: (patch: Partial<FilterValues>) => navigate(queryWith(latest(), patch)),
+    reset: () => {
+      const { category, sort } = latest();
+      navigate(queryWith({ ...EMPTY_FILTERS, category, sort }));
+    },
   };
 }
 

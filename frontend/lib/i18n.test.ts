@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
 import { categoryName, countryName, displayOverview, displayTitle, genreName } from "./catalog";
-import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, parseRatingRange, queryWith } from "./filters";
+import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, latestValues, parseRatingRange, queryWith } from "./filters";
 
 describe("i18n", () => {
   it("recognises the supported UI languages only", () => {
@@ -71,5 +71,15 @@ describe("filter URLs", () => {
     expect(parseRatingRange("abc")).toBeNull();
     expect(formatRatingRange(8, 8)).toBe("8");
     expect(formatRatingRange(7, 9)).toBe("7-9");
+  });
+
+  it("builds a change on the navigation still in flight, so two quick changes both survive", () => {
+    // Search committed on blur, then the click that took the focus: the page still shows the old values
+    const first = queryWith(latestValues(EMPTY_FILTERS, null), { q: "test" });
+    const second = queryWith(latestValues(EMPTY_FILTERS, first), { my: "8" });
+    expect(new URLSearchParams(second.split("?")[1]).get("q")).toBe("test");
+    expect(new URLSearchParams(second.split("?")[1]).get("my")).toBe("8");
+    expect(latestValues({ ...EMPTY_FILTERS, year: "2024" }, null).year).toBe("2024");
+    expect(latestValues({ ...EMPTY_FILTERS, year: "2024" }, "/")).toEqual(EMPTY_FILTERS);
   });
 });

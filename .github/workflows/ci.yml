@@ -26,6 +26,8 @@ jobs:
           report=target/surefire-reports/TEST-com.watchlist.DatabaseSchemaTest.xml
           test -f "$report" || { echo "no surefire report for DatabaseSchemaTest"; exit 1; }
           grep -Eq 'tests="[1-9][0-9]*"' "$report" && grep -q 'skipped="0"' "$report"
+      - name: Tests of the restore tool
+        run: python3 -B -m unittest discover -s tools -p "test_*.py"
       - name: Docker image builds with the same Java version
         run: docker build .
 

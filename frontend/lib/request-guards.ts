@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-/** Generous for a four-field JSON body whose longest field is a 2000-character note (UTF-8, maybe emoji). */
-export const MAX_WRITE_BODY_BYTES = 16 * 1024;
+/**
+ * Every body the forms can produce must fit: an edit carries up to 2000 + 255 + 4000 characters of
+ * text, a character takes up to four bytes in UTF-8 and a control character six once JSON escapes it,
+ * which is about 38 KiB at the very worst. 64 KiB leaves room and is still far too small to abuse.
+ */
+export const MAX_WRITE_BODY_BYTES = 64 * 1024;
 
 export interface OriginPolicy {
   /** Fixed public origin such as https://my-watchlist-sf.vercel.app. When set, request headers are not consulted. */

@@ -1,11 +1,22 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { LIST_URL_KEY } from "../../RememberListUrl";
+import { LIST_URL_KEY, OPENED_FROM_LIST_KEY, backAction } from "@/lib/back";
 
 /** Back to the list as the visitor last saw it (filters, scroll); a plain link to "/" without JavaScript. */
 export function BackLink({ label }: { label: string }) {
   const router = useRouter();
+  // Read once and removed: the note is true for this arrival only, not for a later one from elsewhere
+  const openedFromList = useRef(false);
+  useEffect(() => {
+    try {
+      openedFromList.current = sessionStorage.getItem(OPENED_FROM_LIST_KEY) === window.location.pathname;
+      sessionStorage.removeItem(OPENED_FROM_LIST_KEY);
+    } catch {
+      // storage unavailable
+    }
+  }, []);
   return (
     <a
       href="/"
@@ -16,10 +27,11 @@ export function BackLink({ label }: { label: string }) {
         } catch {
           // storage unavailable
         }
-        if (!listUrl) return;
+        const action = backAction(listUrl, openedFromList.current);
+        if (action.kind === "link") return;
         e.preventDefault();
-        if (window.history.length > 1) router.back();
-        else router.push(listUrl);
+        if (action.kind === "back") router.back();
+        else router.push(action.href);
       }}
       className="focus-ring rounded text-sm text-muted transition-colors duration-150 hover:text-accent"
     >
