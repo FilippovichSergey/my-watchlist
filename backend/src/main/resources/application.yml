@@ -8,6 +8,14 @@ spring:
     url: ${DATABASE_URL}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      # The database is serverless (Neon) and is billed while it is awake; it falls asleep after five
+      # idle minutes. So the pool keeps nothing open while nobody asks: no idle connections, no
+      # background keepalive query. The first request after a pause waits a second or two for the wake-up.
+      minimum-idle: 0
+      idle-timeout: 60000
+      keepalive-time: 0
+      maximum-pool-size: 5
   jpa:
     hibernate:
       ddl-auto: validate
