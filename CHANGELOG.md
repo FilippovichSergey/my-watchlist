@@ -9,7 +9,7 @@ this project uses [semantic versioning](https://semver.org/).
 Addresses `review/review_2026-11-22_v1.1.1.md`.
 
 ### Fixed
-- **[P2] finding #1** — `restore_entries.py` dropped carriage returns from text, so `FirstSecond` came back as `FirstSecond`. A carriage return is written as an escape, like a line feed.
+- **[P2] finding #1** — `restore_entries.py` dropped carriage returns from text, so a carriage return between `First` and `Second` came back as `FirstSecond`. A carriage return is written as an escape, like a line feed.
 - **[P2] finding #2** — a TMDB search result in the admin page could only be chosen with the mouse. Each result is a button now, reachable with Tab and chosen with Enter or Space.
 - **Rest of finding #1 of the 1.1.0 review** — a list read started before a "refresh all" run ended could still put the old list back. The end of the run counts as a change, so that read is made again.
 
