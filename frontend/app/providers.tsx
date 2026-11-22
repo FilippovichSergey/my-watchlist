@@ -24,8 +24,15 @@ function CurrentUrl({ onChange }: { onChange: (url: string) => void }) {
   return null;
 }
 
-/** A navigation that has not arrived after this long is no longer shown as pending. */
-const PENDING_LIMIT_MS = 10_000;
+/**
+ * On the deployed site about one list-to-list navigation in seven stalls: the answer arrives in a fraction
+ * of a second, but the router does not show it until something else happens (measured on 2026-11-22; a
+ * plain <Link> and a bare router.push stall alike, a local production build never does, and the cause in
+ * the framework is not found yet). So a navigation is watched: if the address has not changed in time it
+ * is asked for again, and if that does not help either the page is loaded the plain way, which always works.
+ */
+const RETRY_AFTER_MS = 1_200;
+const FULL_LOAD_AFTER_MS = 2_600;
 /** Set on <html> while a filter navigation is on its way; globals.css shows the bar by it. */
 const PENDING_ATTRIBUTE = "data-navigating";
 
@@ -34,24 +41,28 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
   // A filter change is a navigation. router.push is called as it is: the router runs its own transition
   // and keeps the current list on screen until the new one is ready.
   //
-  // Nothing here may update React state at the moment of the click. A state update of ours next to the
-  // router's transition (first useTransition's isPending, then a plain useState) made about one navigation
-  // in six stall on the deployed site: the answer had arrived, but the new list was only shown when some
-  // later update woke React up, which could be the next click. So the progress indication lives outside
-  // React: an attribute on <html>, set here and removed when the address has reached its target.
+  // The progress indication lives outside React (an attribute on <html>, set here and removed when the
+  // address has reached its target), so a filter change costs no render of its own.
   const target = useRef<string | null>(null);
   const shown = useRef<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const settle = useCallback((href: string | null) => {
-    target.current = href;
-    clearTimeout(timer.current);
-    if (href === null) {
-      document.documentElement.removeAttribute(PENDING_ATTRIBUTE);
-    } else {
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const settle = useCallback(
+    (href: string | null) => {
+      target.current = href;
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      if (href === null) {
+        document.documentElement.removeAttribute(PENDING_ATTRIBUTE);
+        return;
+      }
       document.documentElement.setAttribute(PENDING_ATTRIBUTE, "");
-      timer.current = setTimeout(() => settle(null), PENDING_LIMIT_MS);
-    }
-  }, []);
+      timers.current = [
+        setTimeout(() => target.current === href && router.push(href), RETRY_AFTER_MS),
+        setTimeout(() => target.current === href && window.location.assign(href), FULL_LOAD_AFTER_MS),
+      ];
+    },
+    [router]
+  );
   const navigate = useCallback(
     (href: string) => {
       if (href !== shown.current) settle(href);

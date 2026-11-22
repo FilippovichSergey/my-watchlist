@@ -4,6 +4,11 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.7] - 2026-11-22
+
+### Changed
+- 1.0.5 and 1.0.6 did not cure the frozen list either: on the deployed site about one list-to-list navigation in seven still stalls, with a plain link and a bare `router.push` alike, and the cause in the framework is not found. Until it is, a filter navigation is watched: if the address has not changed after 1.2 s the navigation is asked for again, and after 2.6 s the page is loaded the plain way.
+
 ## [1.0.6] - 2026-11-22
 
 ### Fixed
