@@ -4,6 +4,11 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.6] - 2026-11-22
+
+### Fixed
+- 1.0.5 did not cure the frozen list. The navigation was not lost but stalled: the answer had arrived, and the new list appeared only when a later React update came, which in 1.0.5 was its own ten-second timer. The stall is set off by a React state update of the app at the moment of the click, next to the router's transition. The progress bar is now an attribute on `<html>` shown by CSS, and a filter change updates no React state.
+
 ## [1.0.5] - 2026-11-22
 
 ### Fixed

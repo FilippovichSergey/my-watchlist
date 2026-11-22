@@ -99,3 +99,12 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Progress bar of a filter navigation: providers.tsx sets the attribute, outside React on purpose */
+.pending-bar {
+  display: none;
+}
+html[data-navigating] .pending-bar {
+  display: block;
+}
+

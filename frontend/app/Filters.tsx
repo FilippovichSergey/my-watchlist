@@ -42,11 +42,10 @@ export type { FilterOptions, FilterValues };
 
 /** Every change is a navigation: the filters live in the URL and the page re-renders on the server. */
 function useFilterNavigation(values: FilterValues) {
-  const { navigate, pending, pendingHref } = useNavigation();
+  const { navigate, pendingHref } = useNavigation();
   // Built on the change still in flight, if any: `values` only catch up when the server has answered
   const latest = () => latestValues(values, pendingHref());
   return {
-    pending,
     latest,
     go: (patch: Partial<FilterValues>) => navigate(queryWith(latest(), patch)),
     reset: () => {
@@ -235,9 +234,9 @@ function FilterFields({ values, options, sheet = false }: { values: FilterValues
 /** Desktop: the sticky sidebar card. */
 export function FilterPanel({ values, options }: { values: FilterValues; options: FilterOptions }) {
   const t = useT();
-  const { reset, pending } = useFilterNavigation(values);
+  const { reset } = useFilterNavigation(values);
   return (
-    <div className="card flex flex-col gap-[18px] px-5 pb-4 pt-5" aria-busy={pending}>
+    <div className="card flex flex-col gap-[18px] px-5 pb-4 pt-5">
       <div className="flex items-center justify-between">
         <span className="font-display text-base font-semibold uppercase tracking-[0.8px]">{t("home.filters")}</span>
         {hasActiveFilters(values) && <ResetButton onClick={reset} />}
