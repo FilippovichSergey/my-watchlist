@@ -41,7 +41,8 @@ export const hasActiveFilters = (values: FilterValues) => activeFilterCount(valu
 export function queryWith(values: FilterValues, patch: Partial<FilterValues> = {}): string {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries({ ...values, ...patch })) {
-    if (v && v !== "ALL") params.set(k, v);
+    // "ALL" is the category tab for the whole list; in a search or an actor's name it is just text
+    if (v && !(k === "category" && v === "ALL")) params.set(k, v);
   }
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";

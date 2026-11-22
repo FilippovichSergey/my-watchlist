@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useT } from "../providers";
 import { ApiError, deleteEntry, fetchAdminEntries, refreshEntry, refreshProgress, startRefreshAll, updateEntry } from "@/lib/api";
+import { readUnchanged } from "@/lib/fresh";
 import type { Entry, RefreshProgress, UpdateEntryInput } from "@/lib/types";
 import { AddEntryForm } from "./AddEntryForm";
 import { EntryList } from "./EntryList";
@@ -21,6 +22,9 @@ export function AdminPanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const polling = useRef(false);
+  // Counts the changes made here, so that a list read overtaken by one is read again (see readUnchanged)
+  const changes = useRef(0);
+  const loadEntries = useCallback(() => readUnchanged(fetchAdminEntries, () => changes.current), []);
   const refreshing = progress?.running ?? false;
 
   const handleError = useCallback(
@@ -52,7 +56,7 @@ export function AdminPanel({
           current = await refreshProgress();
           setProgress(current);
         }
-        setEntries(await fetchAdminEntries());
+        setEntries(await loadEntries());
         if (current.error) {
           // Stopped early: some titles may be fresh, but the run is not a success
           setError(t("admin.refreshAborted", { done: current.done, total: current.total, reason: current.error }));
@@ -67,20 +71,23 @@ export function AdminPanel({
         setProgress(null);
       }
     },
-    [handleError, t]
+    [handleError, loadEntries, t]
   );
 
   useEffect(() => {
-    fetchAdminEntries().then(setEntries).catch(handleError);
+    loadEntries().then(setEntries).catch(handleError);
     // A run started before a page reload is still going on the backend; pick it up again
     refreshProgress()
       .then((p) => {
         if (p.running) void followRefresh(p);
       })
       .catch(handleError);
-  }, [handleError, followRefresh]);
+  }, [handleError, followRefresh, loadEntries]);
 
-  const replace = (updated: Entry) => setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+  const replace = (updated: Entry) => {
+    changes.current++;
+    setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+  };
 
   async function handleUpdate(id: number, input: UpdateEntryInput): Promise<boolean> {
     setError(null);
@@ -116,6 +123,7 @@ export function AdminPanel({
     setError(null);
     try {
       await deleteEntry(id);
+      changes.current++;
       setEntries((prev) => prev.filter((e) => e.id !== id));
     } catch (err) {
       handleError(err);
@@ -156,6 +164,7 @@ export function AdminPanel({
       <AddEntryForm
         onAdded={(entry) => {
           setError(null);
+          changes.current++;
           setEntries((prev) => [entry, ...prev]);
         }}
         onError={handleError}

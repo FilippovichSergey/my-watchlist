@@ -110,4 +110,11 @@ describe("filter URLs", () => {
     expect(params.get("category")).toBe("ANIME");
     expect(params.get("my")).toBe("8");
   });
+
+  it("keeps the text ALL in a search or an actor filter and drops it only as the category", () => {
+    expect(queryWith({ ...EMPTY_FILTERS, category: "ALL" })).toBe("/");
+    expect(queryWith({ ...EMPTY_FILTERS, q: "ALL" })).toBe("/?q=ALL");
+    expect(queryWith({ ...EMPTY_FILTERS, actor: "ALL" })).toBe("/?actor=ALL");
+    expect(queryWith(valuesFromQuery("q=ALL"), { category: "ANIME" })).toBe("/?category=ANIME&q=ALL");
+  });
 });

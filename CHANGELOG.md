@@ -4,6 +4,17 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.1.1] - 2026-11-22
+
+Addresses `review/review_2026-11-22_v1.1.0.md`.
+
+### Fixed
+- **[P2] finding #1** — in the admin page the first read of the list could arrive after an entry had been added and put the old list back, hiding the new entry. A read that a change overtook is thrown away and made again.
+- **[P2] finding #2** — the text `ALL` typed into the search or the actor filter was dropped from the address, so the list ignored it. Only the category treats `ALL` as "everything".
+
+### Added
+- Frontend tests for both (64 in all).
+
 ## [1.1.0] - 2026-11-22
 
 ### Changed
