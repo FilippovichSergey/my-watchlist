@@ -62,17 +62,6 @@ export function parseRatingRange(value: string): { min: number; max: number } | 
 export const formatRatingRange = (min: number, max: number) => (min === max ? String(min) : `${min}-${max}`);
 
 /**
- * The filters the next change builds on. While an earlier change is still on its way to the server,
- * the page's own values are one step behind, so the change is laid over that pending URL instead:
- * a search committed by leaving the field and the click that took the focus away both survive.
- */
-export function latestValues(values: FilterValues, pendingHref: string | null): FilterValues {
-  if (pendingHref === null) return values;
-  const params = new URLSearchParams(pendingHref.split("?")[1] ?? "");
-  return filtersFrom((key) => params.get(key));
-}
-
-/**
  * The own-rating filter after a click on a score: the only picked score again clears it, a second
  * score makes the range between the two, anything else starts over with that score.
  */

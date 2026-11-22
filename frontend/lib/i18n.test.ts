@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LOCALE, LOCALES, isLocale, t } from "./i18n";
 import { categoryName, countryName, displayOverview, displayTitle, genreName } from "./catalog";
-import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, latestValues, nextRating, parseRatingRange, queryWith } from "./filters";
+import { EMPTY_FILTERS, activeFilterCount, filtersFrom, formatRatingRange, hasActiveFilters, nextRating, parseRatingRange, queryWith } from "./filters";
+import { valuesFromQuery } from "./query-store";
+import type { FilterValues } from "./filters";
+
+/** The filters a change is built on: those of the address it was made from. */
+const latestValues = (shown: FilterValues, href: string | null) => (href === null ? shown : valuesFromQuery(href.split("?")[1] ?? ""));
 
 describe("i18n", () => {
   it("recognises the supported UI languages only", () => {

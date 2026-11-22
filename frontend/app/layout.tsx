@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Jost, Oswald } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
-import { PendingBar, Providers } from "./providers";
+import { Providers } from "./providers";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { NavTabs } from "./NavTabs";
 import { ThemeToggle } from "./ThemeToggle";
@@ -58,7 +58,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           >
             {t(locale, "nav.skip")}
           </a>
-          <PendingBar label={t(locale, "nav.loading")} />
           <header className="sticky top-0 z-10 bg-header text-white shadow-[0_1px_0_rgba(255,255,255,.06)]">
             <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-7 px-[18px] desk:h-[60px] desk:px-6">
               <Link

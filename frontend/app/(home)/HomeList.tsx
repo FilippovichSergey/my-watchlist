@@ -1,0 +1,177 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo } from "react";
+import { useLocale, useT } from "../providers";
+import { FilterPanel, FilterSheet, SearchBar, SortSelect } from "../Filters";
+import { RememberListUrl } from "../RememberListUrl";
+import { categoryName, countryName, displayTitle } from "@/lib/catalog";
+import { hasActiveFilters, type FilterOptions } from "@/lib/filters";
+import { filterEntries, type ListEntry } from "@/lib/list";
+import { pushQuery, useQuery, valuesFromQuery } from "@/lib/query-store";
+import { sortEntries, toSortKey } from "@/lib/sort";
+
+export interface Stat {
+  value: number | string;
+  label: string;
+  desktopOnly?: boolean;
+}
+
+/**
+ * The list with its filters. The server sends the whole list once; choosing a category, a filter or a
+ * sort order only changes the address and what this component shows of the list, with no request.
+ */
+export function HomeList({
+  entries,
+  options,
+  stats,
+  unavailable,
+  initialQuery,
+}: {
+  entries: ListEntry[];
+  options: FilterOptions;
+  stats: Stat[];
+  unavailable: boolean;
+  /** The query string the server rendered this page for. */
+  initialQuery: string;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const query = useQuery(initialQuery);
+  const values = useMemo(() => valuesFromQuery(query), [query]);
+  const filtered = useMemo(() => filterEntries(entries, values), [entries, values]);
+  const shown = useMemo(
+    () => sortEntries(filtered, toSortKey(values.sort), locale, (e) => displayTitle(e, locale)),
+    [filtered, values.sort, locale]
+  );
+
+  // Category, narrowing filters or search: anything that makes the list shorter than the whole
+  const anythingActive = (values.category !== "" && values.category !== "ALL") || hasActiveFilters(values);
+  const message = unavailable
+    ? t("home.unavailable")
+    : entries.length === 0
+      ? t("home.empty")
+      : filtered.length === 0
+        ? t("home.noMatches")
+        : null;
+
+  return (
+    <div className="flex flex-col gap-[14px] desk:grid desk:grid-cols-[250px_minmax(0,1fr)] desk:items-start desk:gap-6">
+      <h1 className="sr-only">{t("home.heading")}</h1>
+      <RememberListUrl query={query} />
+      <aside aria-label={t("home.filters")} className="hidden desk:sticky desk:top-[84px] desk:block">
+        <FilterPanel values={values} options={options} />
+      </aside>
+
+      <section className="flex min-w-0 flex-col gap-[14px] desk:gap-5">
+        <div className="card flex flex-wrap justify-between gap-5 rounded-xl px-4 py-3 desk:justify-start desk:gap-7 desk:px-[22px] desk:py-[14px]">
+          {stats.map((s) => (
+            <div key={s.label} className={`flex-col ${s.desktopOnly ? "hidden desk:flex" : "flex"}`}>
+              <span className="text-[22px] font-black leading-[1.1] tracking-[-0.5px] text-accent">{s.value}</span>
+              <span className="mt-[2px] text-[11px] font-bold uppercase tracking-[0.8px] text-muted desk:text-[9px]">{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-[10px] desk:gap-[14px]">
+          <SearchBar values={values} />
+          <div className="hidden desk:block">
+            <SortSelect values={values} />
+          </div>
+          <div className="desk:hidden">
+            <FilterSheet values={values} options={options} count={filtered.length} />
+          </div>
+          <Found n={filtered.length} showReset={anythingActive} className="hidden desk:flex" />
+        </div>
+        <Found n={filtered.length} showReset={anythingActive} className="flex desk:hidden" />
+
+        {message ? (
+          <p className="my-12 text-center text-sm text-muted">{message}</p>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-4">
+            {shown.map((entry, index) => (
+              <EntryCard key={entry.id} entry={entry} eager={index < 6} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/** "Found: N", with a link back to the whole list whenever a category, filter or search narrows it. */
+function Found({ n, showReset, className }: { n: number; showReset: boolean; className: string }) {
+  const t = useT();
+  return (
+    <div className={`items-center justify-between gap-3 ${className}`} aria-live="polite">
+      <span className="label-caps whitespace-nowrap">
+        {t("home.found")}: <span className="font-display text-[13px] text-accent">{n}</span>
+      </span>
+      {showReset && (
+        <a
+          href="/"
+          onClick={(e) => {
+            // Modified clicks (new tab) keep the plain link
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            e.preventDefault();
+            pushQuery("/");
+          }}
+          className="focus-ring whitespace-nowrap rounded text-xs font-semibold tracking-[0.1px] text-muted transition-colors duration-150 hover:text-accent"
+        >
+          {t("home.resetAll")}
+        </a>
+      )}
+    </div>
+  );
+}
+
+/** `eager` marks the posters above the fold, which the browser then loads before anything else. */
+function EntryCard({ entry, eager }: { entry: ListEntry; eager: boolean }) {
+  const t = useT();
+  const locale = useLocale();
+  const title = displayTitle(entry, locale);
+  const facts = [
+    entry.releaseYear,
+    categoryName(entry.category, locale),
+    entry.countries.map((c) => countryName(c, locale)).join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Link
+      href={`/title/${entry.id}`}
+      className="card focus-ring group grid min-h-[144px] grid-cols-[96px_minmax(0,1fr)] overflow-hidden desk:min-h-[156px] desk:grid-cols-[104px_minmax(0,1fr)]"
+    >
+      <div className="relative overflow-hidden bg-subtle">
+        {entry.posterUrl && (
+          <Image
+            src={entry.posterUrl}
+            alt={title}
+            fill
+            priority={eager}
+            className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+            sizes="104px"
+          />
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-[5px] px-4 pb-3 pt-[14px] desk:gap-[6px] desk:px-[18px] desk:pb-[14px] desk:pt-4">
+        <p className="line-clamp-2 text-pretty text-[15px] font-semibold leading-[1.25] tracking-[-0.1px]">{title}</p>
+        <p className="text-xs text-muted">{facts}</p>
+        <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-2 desk:pt-[10px]">
+          <Numeral value={entry.tmdbRating != null ? entry.tmdbRating.toFixed(1) : "–"} label="TMDB" />
+          <Numeral value={entry.myRating ?? "–"} label={t("filter.myRating")} accent />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function Numeral({ value, label, accent = false }: { value: number | string; label: string; accent?: boolean }) {
+  return (
+    <div className="flex flex-col">
+      <span className={`numeral text-[26px] desk:text-[28px] ${accent ? "text-accent" : "text-ink"}`}>{value}</span>
+      <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.9px] text-muted desk:text-[9px]">{label}</span>
+    </div>
+  );
+}

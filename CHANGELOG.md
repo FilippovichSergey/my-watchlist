@@ -4,6 +4,18 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-22
+
+### Changed
+- Tabs, filters, search and the sort order are applied in the browser. The server sends the whole list once, still rendering a shared link already filtered; a change then only sets the address (`history.pushState`) and the list on the page is filtered and sorted from it, so nothing waits for the server and back, forward and shared links work as before. This removes the situation in which about one list navigation in ten stalled inside the framework's router on the deployed site; the cause of those stalls was never found.
+- The list page receives slim entries, without overviews and feedback.
+
+### Removed
+- The watchdog of 1.0.7 (retry, then full page load) and the progress bar: there is no navigation left to watch.
+
+### Added
+- `lib/list.ts` with tests of the filtering (60 frontend tests in all).
+
 ## [1.0.8] - 2026-11-22
 
 ### Changed

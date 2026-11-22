@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useNavigation, useT } from "./providers";
-import { filtersFrom, latestValues, queryWith } from "@/lib/filters";
+import { useT } from "./providers";
+import { queryWith } from "@/lib/filters";
+import { addressChanged, currentQuery, pushQuery, useQuery, valuesFromQuery } from "@/lib/query-store";
 
 const TABS = [
   ["ALL", "cat.all"],
@@ -16,10 +18,12 @@ const TABS = [
 export function NavTabs() {
   const t = useT();
   const pathname = usePathname();
-  const params = useSearchParams();
-  const values = filtersFrom((key) => params.get(key));
+  // Live address: on the list page it changes without the router (see lib/query-store)
+  const routerQuery = useSearchParams().toString();
+  const values = valuesFromQuery(useQuery(routerQuery));
+  // And when the router did navigate, it sets the address only after rendering: read it again then
+  useEffect(() => addressChanged(), [pathname, routerQuery]);
   const active = pathname === "/" ? values.category || "ALL" : null;
-  const { navigate, pendingHref } = useNavigation();
   return (
     <nav
       aria-label={t("nav.sections")}
@@ -30,12 +34,11 @@ export function NavTabs() {
           key={value}
           href={queryWith(values, { category: value })}
           onClick={(e) => {
-            // On the list a tab is one more filter change: it goes through the shared navigation, so that it
-            // is built on a change still in flight and the next change is built on it. The href shows the
-            // last finished view only. Modified clicks (new tab) and other pages keep the plain link.
+            // On the list a tab is one more filter change, made in the browser like the others. Modified
+            // clicks (new tab) and other pages keep the plain link.
             if (pathname !== "/" || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
             e.preventDefault();
-            navigate(queryWith(latestValues(values, pendingHref()), { category: value }));
+            pushQuery(queryWith(valuesFromQuery(currentQuery()), { category: value }));
           }}
           aria-current={active === value ? "page" : undefined}
           className={`hit-area focus-ring-dark inline-flex items-center whitespace-nowrap rounded-lg px-[18px] py-[6px] text-sm font-semibold tracking-[0.1px] transition-all duration-150 ${

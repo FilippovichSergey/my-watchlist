@@ -1,14 +1,11 @@
-import Image from "next/image";
-import Link from "next/link";
 import { fetchPublicEntries } from "@/lib/backend";
 import { getLocale } from "@/lib/locale.server";
-import { t, type Locale } from "@/lib/i18n";
-import { categoryName, countryName, displayTitle, genreName } from "@/lib/catalog";
+import { t } from "@/lib/i18n";
+import { countryName, genreName } from "@/lib/catalog";
 import type { Entry } from "@/lib/types";
-import { FilterPanel, FilterSheet, SearchBar, SortSelect } from "../Filters";
-import { RememberListUrl } from "../RememberListUrl";
-import { filtersFrom, hasActiveFilters, parseRatingRange, type FilterOptions } from "@/lib/filters";
-import { sortEntries, toSortKey } from "@/lib/sort";
+import { filtersFrom, queryWith, type FilterOptions } from "@/lib/filters";
+import { toListEntry } from "@/lib/list";
+import { HomeList, type Stat } from "./HomeList";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -17,14 +14,14 @@ function one(p: Params, key: string): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
-function num(s: string): number | null {
-  const n = Number(s);
-  return s !== "" && Number.isFinite(n) ? n : null;
-}
-
+/**
+ * Fetches the whole list and what describes it as a whole (filter options, statistics); HomeList then
+ * filters and sorts it, on the server for this first answer and in the browser for every change after.
+ */
 export default async function HomePage({ searchParams }: { searchParams: Promise<Params> }) {
   const [p, locale] = await Promise.all([searchParams, getLocale()]);
-  const values = filtersFrom((key) => one(p, key));
+  // The same string the browser will read from its address bar, minus anything that is not a filter
+  const initialQuery = queryWith(filtersFrom((key) => one(p, key))).replace(/^[/][?]?/, "");
 
   let entries: Entry[] = [];
   let unavailable = false;
@@ -33,29 +30,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   } catch {
     unavailable = true;
   }
-
-  const year = num(values.year);
-  const genre = num(values.genre);
-  const rating = num(values.rating);
-  const my = parseRatingRange(values.my);
-  const actor = values.actor.trim().toLowerCase();
-  const q = values.q.trim().toLowerCase();
-  const filtered = entries.filter(
-    (e) =>
-      (!values.category || values.category === "ALL" || e.category === values.category) &&
-      (!q ||
-        e.title.toLowerCase().includes(q) ||
-        (e.originalTitle ?? "").toLowerCase().includes(q) ||
-        (e.titleBe ?? "").toLowerCase().includes(q)) &&
-      (year === null || e.releaseYear === year) &&
-      (!values.country || e.countries.includes(values.country)) &&
-      (genre === null || e.genreIds.includes(genre)) &&
-      (!actor || e.cast.some((name) => name.toLowerCase().includes(actor))) &&
-      (rating === null || (e.tmdbRating ?? 0) >= rating) &&
-      (my === null || (e.myRating != null && e.myRating >= my.min && e.myRating <= my.max))
-  );
-
-  const shown = sortEntries(filtered, toSortKey(values.sort), locale, (e) => displayTitle(e, locale));
 
   // Options and statistics describe the whole list; only "found" follows the filters
   const options: FilterOptions = {
@@ -70,7 +44,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const inCategory = (c: string) => entries.filter((e) => e.category === c).length;
   const rated = entries.filter((e) => e.myRating != null);
   const average = rated.length ? (rated.reduce((sum, e) => sum + (e.myRating ?? 0), 0) / rated.length).toFixed(1) : "–";
-  const stats: { value: number | string; label: string; desktopOnly?: boolean }[] = [
+  const stats: Stat[] = [
     { value: entries.length, label: t(locale, "stats.total") },
     { value: inCategory("MOVIE"), label: t(locale, "cat.movies") },
     { value: inCategory("ANIME"), label: t(locale, "cat.anime") },
@@ -78,124 +52,13 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     { value: average, label: t(locale, "stats.avgMy"), desktopOnly: true },
   ];
 
-  // Category, narrowing filters or search: anything that makes the list shorter than the whole
-  const anythingActive = (values.category !== "" && values.category !== "ALL") || hasActiveFilters(values);
-
-  const message = unavailable
-    ? t(locale, "home.unavailable")
-    : entries.length === 0
-      ? t(locale, "home.empty")
-      : filtered.length === 0
-        ? t(locale, "home.noMatches")
-        : null;
-
   return (
-    <div className="flex flex-col gap-[14px] desk:grid desk:grid-cols-[250px_minmax(0,1fr)] desk:items-start desk:gap-6">
-      <h1 className="sr-only">{t(locale, "home.heading")}</h1>
-      <RememberListUrl />
-      <aside aria-label={t(locale, "home.filters")} className="hidden desk:sticky desk:top-[84px] desk:block">
-        <FilterPanel values={values} options={options} />
-      </aside>
-
-      <section className="flex min-w-0 flex-col gap-[14px] desk:gap-5">
-        <div className="card flex flex-wrap justify-between gap-5 rounded-xl px-4 py-3 desk:justify-start desk:gap-7 desk:px-[22px] desk:py-[14px]">
-          {stats.map((s) => (
-            <div key={s.label} className={`flex-col ${s.desktopOnly ? "hidden desk:flex" : "flex"}`}>
-              <span className="text-[22px] font-black leading-[1.1] tracking-[-0.5px] text-accent">{s.value}</span>
-              <span className="mt-[2px] text-[11px] font-bold uppercase tracking-[0.8px] text-muted desk:text-[9px]">{s.label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-[10px] desk:gap-[14px]">
-          <SearchBar values={values} />
-          <div className="hidden desk:block">
-            <SortSelect values={values} />
-          </div>
-          <div className="desk:hidden">
-            <FilterSheet values={values} options={options} count={filtered.length} />
-          </div>
-          <Found n={filtered.length} locale={locale} showReset={anythingActive} className="hidden desk:flex" />
-        </div>
-        <Found n={filtered.length} locale={locale} showReset={anythingActive} className="flex desk:hidden" />
-
-        {message ? (
-          <p className="my-12 text-center text-sm text-muted">{message}</p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(290px,1fr))] gap-4">
-            {shown.map((entry, index) => (
-              <EntryCard key={entry.id} entry={entry} locale={locale} eager={index < 6} />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-/** "Found: N", with a link back to the whole list whenever a category, filter or search narrows it. */
-function Found({ n, locale, showReset, className }: { n: number; locale: Locale; showReset: boolean; className: string }) {
-  return (
-    <div className={`items-center justify-between gap-3 ${className}`}>
-      <span className="label-caps whitespace-nowrap">
-        {t(locale, "home.found")}: <span className="font-display text-[13px] text-accent">{n}</span>
-      </span>
-      {showReset && (
-        <Link
-          href="/"
-          className="whitespace-nowrap text-xs font-semibold tracking-[0.1px] text-muted transition-colors duration-150 hover:text-accent"
-        >
-          {t(locale, "home.resetAll")}
-        </Link>
-      )}
-    </div>
-  );
-}
-
-/** `eager` marks the posters above the fold, which the browser then loads before anything else. */
-function EntryCard({ entry, locale, eager }: { entry: Entry; locale: Locale; eager: boolean }) {
-  const title = displayTitle(entry, locale);
-  const facts = [
-    entry.releaseYear,
-    categoryName(entry.category, locale),
-    entry.countries.map((c) => countryName(c, locale)).join(", "),
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  return (
-    <Link
-      href={`/title/${entry.id}`}
-      className="card focus-ring group grid min-h-[144px] grid-cols-[96px_minmax(0,1fr)] overflow-hidden desk:min-h-[156px] desk:grid-cols-[104px_minmax(0,1fr)]"
-    >
-      <div className="relative overflow-hidden bg-subtle">
-        {entry.posterUrl && (
-          <Image
-            src={entry.posterUrl}
-            alt={title}
-            fill
-            priority={eager}
-            className="object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:group-hover:scale-100"
-            sizes="104px"
-          />
-        )}
-      </div>
-      <div className="flex min-w-0 flex-col gap-[5px] px-4 pb-3 pt-[14px] desk:gap-[6px] desk:px-[18px] desk:pb-[14px] desk:pt-4">
-        <p className="line-clamp-2 text-pretty text-[15px] font-semibold leading-[1.25] tracking-[-0.1px]">{title}</p>
-        <p className="text-xs text-muted">{facts}</p>
-        <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-2 desk:pt-[10px]">
-          <Numeral value={entry.tmdbRating != null ? entry.tmdbRating.toFixed(1) : "–"} label="TMDB" />
-          <Numeral value={entry.myRating ?? "–"} label={t(locale, "filter.myRating")} accent />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function Numeral({ value, label, accent = false }: { value: number | string; label: string; accent?: boolean }) {
-  return (
-    <div className="flex flex-col">
-      <span className={`numeral text-[26px] desk:text-[28px] ${accent ? "text-accent" : "text-ink"}`}>{value}</span>
-      <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.9px] text-muted desk:text-[9px]">{label}</span>
-    </div>
+    <HomeList
+      entries={entries.map(toListEntry)}
+      options={options}
+      stats={stats}
+      unavailable={unavailable}
+      initialQuery={initialQuery}
+    />
   );
 }

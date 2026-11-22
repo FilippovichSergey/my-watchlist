@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { useNavigation, useT } from "./providers";
+import { useT } from "./providers";
 import {
   ArrowDownUpIcon,
   CalendarIcon,
@@ -18,13 +18,13 @@ import {
   activeFilterCount,
   formatRatingRange,
   hasActiveFilters,
-  latestValues,
   nextRating,
   parseRatingRange,
   queryWith,
   type FilterOptions,
   type FilterValues,
 } from "@/lib/filters";
+import { currentQuery, pushQuery, valuesFromQuery } from "@/lib/query-store";
 import { DEFAULT_SORT, SORT_KEYS, type SortKey } from "@/lib/sort";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -40,17 +40,19 @@ const SORT_LABELS: Record<SortKey, MessageKey> = {
 
 export type { FilterOptions, FilterValues };
 
-/** Every change is a navigation: the filters live in the URL and the page re-renders on the server. */
-function useFilterNavigation(values: FilterValues) {
-  const { navigate, pendingHref } = useNavigation();
-  // Built on the change still in flight, if any: `values` only catch up when the server has answered
-  const latest = () => latestValues(values, pendingHref());
+/**
+ * Every change is a new address, set in the browser: the list on the page is filtered from it at once.
+ * A change is built on the address as it is at that moment, not on the props of the last render, so two
+ * changes in one tick (a search committed on blur and the click that caused it) both survive.
+ */
+function useFilterNavigation() {
+  const latest = () => valuesFromQuery(currentQuery());
   return {
     latest,
-    go: (patch: Partial<FilterValues>) => navigate(queryWith(latest(), patch)),
+    go: (patch: Partial<FilterValues>) => pushQuery(queryWith(latest(), patch)),
     reset: () => {
       const { category, sort } = latest();
-      navigate(queryWith({ ...EMPTY_FILTERS, category, sort }));
+      pushQuery(queryWith({ ...EMPTY_FILTERS, category, sort }));
     },
   };
 }
@@ -139,7 +141,7 @@ function RatingRangePicker({
 /** Sort order; a compact select in the desktop search row, a full field inside the mobile sheet. */
 export function SortSelect({ values, sheet = false }: { values: FilterValues; sheet?: boolean }) {
   const t = useT();
-  const { go } = useFilterNavigation(values);
+  const { go } = useFilterNavigation();
   const select = (
     <select
       aria-label={t("sort.label")}
@@ -172,7 +174,7 @@ export function SortSelect({ values, sheet = false }: { values: FilterValues; sh
 /** The six narrowing controls. In the bottom sheet (`sheet`) they sit in a two-column grid. */
 function FilterFields({ values, options, sheet = false }: { values: FilterValues; options: FilterOptions; sheet?: boolean }) {
   const t = useT();
-  const { go, latest } = useFilterNavigation(values);
+  const { go, latest } = useFilterNavigation();
   const [actor, setActor] = useState(values.actor);
   // Reset (and back/forward navigation) change the URL without touching this field
   useEffect(() => setActor(values.actor), [values.actor]);
@@ -234,7 +236,7 @@ function FilterFields({ values, options, sheet = false }: { values: FilterValues
 /** Desktop: the sticky sidebar card. */
 export function FilterPanel({ values, options }: { values: FilterValues; options: FilterOptions }) {
   const t = useT();
-  const { reset } = useFilterNavigation(values);
+  const { reset } = useFilterNavigation();
   return (
     <div className="card flex flex-col gap-[18px] px-5 pb-4 pt-5">
       <div className="flex items-center justify-between">
@@ -249,7 +251,7 @@ export function FilterPanel({ values, options }: { values: FilterValues; options
 /** Title search; applied on Enter or when the field loses focus. */
 export function SearchBar({ values }: { values: FilterValues }) {
   const t = useT();
-  const { go } = useFilterNavigation(values);
+  const { go } = useFilterNavigation();
   const [q, setQ] = useState(values.q);
   useEffect(() => setQ(values.q), [values.q]);
   const commit = () => q.trim() !== values.q && go({ q: q.trim() });
@@ -275,7 +277,7 @@ const FOCUSABLE = "select, input, button, a[href]";
 /** Narrow screens: the "Filters" button with a count badge, opening a bottom sheet with the same controls. */
 export function FilterSheet({ values, options, count }: { values: FilterValues; options: FilterOptions; count: number }) {
   const t = useT();
-  const { reset } = useFilterNavigation(values);
+  const { reset } = useFilterNavigation();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
