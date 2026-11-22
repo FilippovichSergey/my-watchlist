@@ -31,7 +31,9 @@ def lit(value):
         return "NULL"
     text = str(value).replace("'", "''")
     if NEWLINE in text or CR in text or BACKSLASH in text:
-        text = text.replace(BACKSLASH, BACKSLASH * 2).replace(CR, "").replace(NEWLINE, BACKSLASH + "n")
+        # Every character survives: a carriage return travels as an escape too, never dropped
+        text = (text.replace(BACKSLASH, BACKSLASH * 2).replace(CR, BACKSLASH + "r")
+                .replace(NEWLINE, BACKSLASH + "n"))
         return "E'" + text + "'"
     return "'" + text + "'"
 

@@ -56,6 +56,8 @@ export function AdminPanel({
           current = await refreshProgress();
           setProgress(current);
         }
+        // The run rewrote the list on the server: a read still on its way from before is stale now
+        changes.current++;
         setEntries(await loadEntries());
         if (current.error) {
           // Stopped early: some titles may be fresh, but the run is not a success

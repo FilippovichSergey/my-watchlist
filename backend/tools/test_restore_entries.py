@@ -52,6 +52,28 @@ class RestoreEntriesTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.check_sql(result.stdout)
 
+    def test_line_breaks_of_every_kind_are_escaped_not_dropped(self):
+        cr, lf, bs = chr(13), chr(10), chr(92)
+        sys.path.insert(0, str(TOOL.parent))
+        try:
+            from restore_entries import lit
+        finally:
+            sys.path.pop(0)
+        self.assertEqual(lit("First" + cr + "Second"), "E'First" + bs + "rSecond'")
+        self.assertEqual(lit("First" + lf + "Second"), "E'First" + bs + "nSecond'")
+        self.assertEqual(lit("First" + cr + lf + "Second"), "E'First" + bs + "r" + bs + "nSecond'")
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder, "entries.json")
+            entry = dict(ENTRY, review="a" + cr + "b", overviewBe="c" + cr + lf + "d")
+            source.write_text(json.dumps([entry], ensure_ascii=False), encoding="utf-8")
+            target = Path(folder, "restore.sql")
+            result = subprocess.run([sys.executable, "-B", str(TOOL), str(source), str(target)], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            raw = target.read_bytes()
+            self.assertNotIn(cr.encode(), raw)
+            self.assertIn(("E'a" + bs + "rb'").encode(), raw)
+            self.assertIn(("E'c" + bs + "r" + bs + "nd'").encode(), raw)
+
     def test_wrong_arguments_explain_the_usage(self):
         result = subprocess.run([sys.executable, "-B", str(TOOL)], capture_output=True)
         self.assertEqual(result.returncode, 2)

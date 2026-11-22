@@ -18,28 +18,32 @@ export function SearchResults({
       {results.map((r) => {
         const key = titleKey(r);
         return (
-          <li
-            key={key}
-            onClick={() => onSelect(r)}
-            className={`flex gap-3 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 ${
-              selectedKey === key ? "bg-blue-50 dark:bg-blue-950" : ""
-            }`}
-          >
-            {r.posterUrl && (
-              <Image src={r.posterUrl} alt={r.title} width={40} height={60} className="rounded object-cover flex-shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
-                {r.title}
-                {r.year && <span className="text-gray-500 font-normal"> ({r.year})</span>}
-              </p>
-              <p className="text-xs text-gray-500">
-                {r.mediaType === "MOVIE" ? t("admin.movie") : t("admin.tvSeries")}
-                {r.originalTitle && r.originalTitle !== r.title && ` · ${r.originalTitle}`}
-                {r.voteAverage != null && ` · TMDB ${r.voteAverage.toFixed(1)}`}
-              </p>
-              {r.overview && <p className="text-xs text-gray-500 line-clamp-2">{r.overview}</p>}
-            </div>
+          <li key={key}>
+            {/* A real button: reachable with Tab, chosen with Enter or Space */}
+            <button
+              type="button"
+              aria-pressed={selectedKey === key}
+              onClick={() => onSelect(r)}
+              className={`flex w-full gap-3 p-3 text-left hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-600 dark:hover:bg-gray-900 ${
+                selectedKey === key ? "bg-blue-50 dark:bg-blue-950" : ""
+              }`}
+            >
+              {r.posterUrl && (
+                <Image src={r.posterUrl} alt={r.title} width={40} height={60} className="rounded object-cover flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {r.title}
+                  {r.year && <span className="text-gray-500 font-normal"> ({r.year})</span>}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {r.mediaType === "MOVIE" ? t("admin.movie") : t("admin.tvSeries")}
+                  {r.originalTitle && r.originalTitle !== r.title && ` · ${r.originalTitle}`}
+                  {r.voteAverage != null && ` · TMDB ${r.voteAverage.toFixed(1)}`}
+                </p>
+                {r.overview && <p className="text-xs text-gray-500 line-clamp-2">{r.overview}</p>}
+              </div>
+            </button>
           </li>
         );
       })}
