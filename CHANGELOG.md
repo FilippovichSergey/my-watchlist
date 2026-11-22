@@ -4,6 +4,11 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.8] - 2026-11-22
+
+### Changed
+- Next.js 15.5.27 to 15.5.29, to see whether the framework's own fixes end the stalled list navigations. Switching the home loading skeleton off for one deployment did not: the stalls stayed, and the skeleton is back.
+
 ## [1.0.7] - 2026-11-22
 
 ### Changed
