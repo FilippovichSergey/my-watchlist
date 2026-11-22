@@ -4,6 +4,11 @@ All notable changes to My Watchlist are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [semantic versioning](https://semver.org/).
 
+## [1.0.5] - 2026-11-22
+
+### Fixed
+- Switching tabs or the sort order sometimes froze the list on the deployed site: the address did not change and the progress bar stayed until the next click. Filter navigations called `router.push` inside a transition of the app's own, and in production the router then dropped about one navigation in six when it followed the previous one closely. `router.push` is now called directly, and the progress bar is derived from the address not having reached its target yet, with a ten-second limit.
+
 ## [1.0.4] - 2026-11-18
 
 Addresses `review/review_2026-11-18_v1.0.3.md`.
