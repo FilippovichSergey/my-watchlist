@@ -5203,5 +5203,36 @@
     "titleBe": "Прымусь мяне трымцець",
     "overviewBe": "Маркетолаг з традыцыйнымі поглядамі на каханне і шлюб спрабуе разабрацца ў стасунках з кіраўніком кампаніі цацак для дарослых, у якога зусім іншыя каштоўнасці.",
     "createdAt": "2026-11-10T01:01:09.382907Z"
+  },
+  {
+    "id": 181,
+    "tmdbId": 303745,
+    "mediaType": "TV",
+    "title": "Love in Disguise",
+    "originalTitle": "나의 유죄인간",
+    "category": "SERIAL",
+    "releaseYear": 2026,
+    "countries": [
+      "KR"
+    ],
+    "genreIds": [
+      35,
+      18,
+      80
+    ],
+    "cast": [
+      "Yim Si-wan",
+      "Seorina",
+      "Kim Jung-hyun",
+      "Yeon Woo"
+    ],
+    "overview": "Taekang Group's successor, Yoon Yi-jun, is the prime suspect of a shocking murder. To uncover the truth, Kang Jae-hee goes undercover as a male secretary to keep an eye on Yi-jun. The closer they get to what really happened, the closer Yi-jun and Jae-hee become. Will Jae-hee, who is hiding her identity, and Yi-jun, who is hiding a secret, be able to let their true feelings be known to one another?",
+    "posterUrl": "https://image.tmdb.org/t/p/w500/c9DEtqCDZBPL9i06WmbDrcndrBy.jpg",
+    "tmdbRating": 8.9,
+    "myRating": 8,
+    "review": null,
+    "titleBe": "Каханне пад маскай",
+    "overviewBe": "Наступнік групы «Тэкан», Юн І-джун, з'яўляецца галоўным падазроным у шакавальным забойстве.Каб высветліць праўду, Кан Джэ-хі працуе пад прыкрыццём у якасці сакратара-мужчыны, каб сачыць за І-джунам. Чым бліжэй яны падыходзяць да таго, што адбылося насамрэч, тым бліжэй становяцца І-джун і Джэ-хі.Ці змогуць Чжэ-хі, якая хавае сваю асобу, і І-джун, які хавае таямніцу, раскрыць свае сапраўдныя пачуцці адзін аднаму?Translated with https://laratranslate.com",
+    "createdAt": "2026-11-21T14:42:38.725999Z"
   }
 ]
